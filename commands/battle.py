@@ -1,0 +1,198 @@
+import cv2
+import numpy as np
+import requests
+from PIL import Image, ImageDraw, ImageFont
+import random
+import discord
+import io, cv2
+
+headers = {'Accept': 'application/json'}
+
+async def battle(message, lastfmKey):
+    args = message.content.split()[1:]
+
+    if len(args) <= 1:
+        await message.channel.send("Needs more arguments! Please select a time period or add in more lastfm users.")
+
+    period = args[0] #overall, 7day, 1month, 3month, 6month, 12month
+    image = []
+
+    #handle wrong user input
+    if period == "alltime" or period == "all" or period == "o" or period == "a":
+        period = "overall"
+    elif period == "1year" or period == "year" or period == "yearly" or period == "y":
+        period = "12month"
+    elif period == "month" or period == "monthly" or period == "m":
+        period = "1month"
+    elif period == "1week" or period == "week" or period == "weekly" or period == "w":
+        period = "7day"
+    elif period == "quarter" or period == "quarterly" or period == "3m" or period == "q":
+        period = "3month"
+    elif period == "6m" or period == "h" or period == "half" or period == "halfyear":
+        period = "6month"
+
+    if period != "overall" and period != "7day" and period != "1month" and period != "3month" and period != "6month" and period != "12month":
+        await message.channel.send("Please select a timeframe for recent plays (7day, 1month, 3month, 6month, 12month, or overall)")
+        return
+
+    #50 inputs is max
+    if len(args) > 51:
+        await message.channel.send("You can not submit more than 50 usernames.")
+        return
+
+    work_message = await message.channel.send("Working on it!")
+
+    skipped = []
+    less_albums = []
+
+    i = 1
+    num_users = len(args)-1
+
+    for user in args[1:]:
+        print(user)
+        print(str(i) + "/" + str(num_users))
+        await work_message.edit(content=f"Working on it! {str(i)}/{str(num_users)}: **{user}**")
+        i += 1
+
+        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=' + user + '&api_key=' + lastfmKey + '&format=json', headers=headers)
+        rawjson = r.json()
+
+        if "message" in rawjson and rawjson['message'] == "User not found":
+            skipped.append(user)
+            continue
+
+        pfp = rawjson['user']['image'][2]['#text']
+
+        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=5&period=' + period +'&api_key=' + lastfmKey + '&format=json', headers=headers)
+
+        rawjson = r.json()
+        msg = rawjson['topalbums']['album']
+
+        columns = []
+        if len(pfp) == 0:
+            cv_pfp = cv2.resize(np.array(Image.open("assets/lfmdefault.jpeg")), (174,174))
+            cv_pfp = cv2.cvtColor(np.array(cv_pfp), cv2.COLOR_RGB2RGBA)
+        else:
+            init_pfp = requests.get(pfp)
+            bytes_pfp = io.BytesIO(init_pfp.content)
+            cv_pfp = cv2.cvtColor(np.array(Image.open(bytes_pfp)), cv2.COLOR_RGB2BGR)
+            cv_pfp = cv2.cvtColor(cv_pfp, cv2.COLOR_BGR2RGBA)
+
+        columns.append(cv_pfp)
+        columns.append(np.zeros((32, 174, 4), dtype = np.uint8))
+        for album in msg:
+            if len(album['image'][2]['#text']) > 0:
+                init_im = requests.get(album['image'][2]['#text'])
+                bytes_im = io.BytesIO(init_im.content)
+                cv_im = cv2.cvtColor(np.array(Image.open(bytes_im)), cv2.COLOR_RGB2BGR)
+                cv_im = cv2.cvtColor(cv_im, cv2.COLOR_BGR2RGBA)
+            else:
+                blank_album = 255 * np.ones((174, 174, 4), dtype=np.uint8)
+                blank_album = Image.fromarray(blank_album)
+                cv_draw = ImageDraw.Draw(blank_album)
+
+                font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 20)
+
+                draw_album = album['name']
+                cv_draw.text((0,0), draw_album[:min(13,len(draw_album))], font=font, fill=(255,0,0))
+                if len(draw_album) > 13:
+                    if len(draw_album) > 26:
+                        draw_album = draw_album[0:23] + "..."
+                    cv_draw.text((0,15), draw_album[13:], font=font, fill=(255,0,0))
+
+                font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New.ttf", 20)
+
+                draw_artist = album['artist']['name']
+                cv_draw.text((0,50), draw_artist[:min(13,len(draw_artist))], font=font, fill=(255,0,0))
+                if len(draw_artist) > 13:
+                    if len(draw_artist) > 26:
+                        draw_artist = draw_artist[0:23] + "..."
+                    cv_draw.text((0,65), draw_artist[13:], font=font, fill=(255,0,0))
+
+                cv_im = np.array(blank_album)
+                print(cv_im.shape)
+
+            columns.append(cv_im)
+            columns.append(np.zeros((16, 174, 4), dtype = np.uint8))
+
+        userColumn = np.vstack(columns)
+        if userColumn.shape[0] == 206:
+            skipped.append(user)
+
+            continue #skip and continue to next user
+        elif userColumn.shape[0] != 1156:
+            print("RESIZING")
+            less_albums.append(user)
+
+            emptyStack = np.zeros((1156 - userColumn.shape[0], 174, 4), dtype = np.uint8)
+            userColumn = np.vstack([userColumn, emptyStack])
+
+        image.append(userColumn)
+        image.append(np.zeros((1156, 32, 4), dtype = np.uint8))
+
+    if len(image) == 0:
+        await message.channel.send("No valid users!")
+        await work_message.delete()
+        return
+
+    await work_message.edit(content="Generating image!")
+    img = np.hstack(image)
+
+    #crop blank space of image
+    img = img[:-16, :-32]
+
+    h, w = img.shape[:2]
+
+    #resize background
+    refactor_scale = 1.0
+    if img.shape[1] > 1100:
+        refactor_scale = img.shape[1] / 1100.0
+
+    h, w = img.shape[:2]
+    print(h,w)
+
+    # load background image
+    random_bg = random.randint(0, 7)
+    back = cv2.cvtColor(np.array(Image.open(f"assets/bg_{str(random_bg)}.jpeg")), cv2.COLOR_RGB2BGR)
+    back = cv2.cvtColor(back, cv2.COLOR_BGR2RGBA)
+    back = np.array(back)
+    hh, ww = back.shape[:2]
+    back = cv2.resize(back, (round(ww * refactor_scale), round(hh * refactor_scale)))
+    hh, ww = back.shape[:2]
+    print(hh,ww)
+
+    # compute xoff and yoff for placement of upper left corner of resized image
+    yoff = round((hh-h)/2)
+    xoff = round((ww-w)/2)
+    print(yoff,xoff)
+
+    # use numpy indexing to place the resized image in the center of background image
+    result = back.copy()
+    result[round(200*refactor_scale):round(200*refactor_scale)+h, xoff:xoff+w] = img
+
+    #find parts where image is transparent and put background back over them
+    mask = result[:, :, 3] == 0
+    result[mask] = back[mask]
+
+    #crop bottom of image
+    result = result[:round(200*refactor_scale+h+100*refactor_scale)]
+
+    im = Image.fromarray(result[:, :, :3])
+    im.save("chart.jpeg")
+    await message.channel.send(file=discord.File('chart.jpeg'))
+
+    if len(skipped) != 0:
+        error_message = "Skipped: " + str(skipped[0])
+        for user in skipped[1:]:
+            error_message += ", " + str(user)
+        error_message += f" can not be found, or has not listened to any albums in the **{period}** timeframe"
+        await message.channel.send(error_message)
+
+    if len(less_albums) != 0:
+        error_message = str(less_albums[0])
+        for user in less_albums[1:]:
+            error_message += ", " + str(user)
+        error_message += f" did not listen to five albums in the **{period}** timeframe."
+        await message.channel.send(error_message)
+
+    await work_message.delete()
