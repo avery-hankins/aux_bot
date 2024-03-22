@@ -88,7 +88,7 @@ async def on_message(message):
         await sbrefresh(message, client, starboard_channel, starboard_bot, server)
         return
 
-    if message.content.startswith("!sblb") or message.content.startswith('!starboardleaderboard'):
+    if message.content.startswith("!sblb") or message.content.startswith('!sbleaderboard') or message.content.startswith('!starboardleaderboard'):
         await sbleaderboard(message)
         return
 
