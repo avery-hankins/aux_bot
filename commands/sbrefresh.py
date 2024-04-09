@@ -18,9 +18,17 @@ async def sbrefresh(message, client, starboard_channel, starboard_bot, server):
 
         temp_message = str(sbmessage.content)[str(sbmessage.content).index("**")+2:]
         stars = temp_message[0:temp_message.index("**")]
-        chan_id = int(str(sbmessage.content)[str(sbmessage.content).index("#")+1:-1])
+        if str(sbmessage.content).find("#") != -1:
+            #old sb system
+            chan_id = int(str(sbmessage.content)[str(sbmessage.content).index("#")+1:-1])
+            message_id = int(str(sbmessage.embeds[embed_index].footer)[str(sbmessage.embeds[embed_index].footer).index(" ")+1:-2])
+        else:
+            #new sb system
+            args = str(sbmessage.content)[str(sbmessage.content).index("discord.com"):]
+            args = args.split("/")
+            chan_id = int(args[3])
+            message_id = int(args[4])
 
-        message_id = int(str(sbmessage.embeds[embed_index].footer)[str(sbmessage.embeds[embed_index].footer).index(" ")+1:-2])
         try:
             serv = await client.fetch_guild(server)
             chan = await serv.fetch_channel(chan_id)
