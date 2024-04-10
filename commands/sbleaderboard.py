@@ -1,20 +1,38 @@
 import discord
+from commands.sbrefresh import sbrefresh, recent_id
 
-async def sbleaderboard(message):
+async def sbleaderboard(message, client, starboard_bot):
     stars = True
     if len(message.content.split(" ")) > 1 and message.content.split(" ")[1] == "messages":
         stars = False
 
     embedVar = discord.Embed(title="Starboard Leaderboard - Most " + str({True: "Stars", False: "Messages Pinned"}[stars]), description="", color=0xFFFF00)
 
-    f = open({True: "stars.csv", False: "pinned.csv"}[stars], "r")
-    list_f = f.readlines()
-    f.close()
+    server_id = message.channel.guild.id
+    try:
+        f = open({True: (str(server_id) + "_stars.csv"), False: (str(server_id) + "_pinned.csv")}[stars], "r")
+        list_f = f.readlines()
+        f.close()
+    except:
+        db_message = await message.channel.send("Database doesn't exist! Running !sbrefresh command...")
+        await sbrefresh(message, client, starboard_bot)
+        f = open({True: (str(server_id) + "_stars.csv"), False: (str(server_id) + "_pinned.csv")}[stars], "r")
+        list_f = f.readlines()
+        f.close()
+        await db_message.delete()
+
+    recent_id_val = await recent_id(message)
+    if int(list_f[1]) != int(recent_id_val):
+        db_message = await message.channel.send("Database needs to update! Running !sbrefresh command...")
+        await sbrefresh(message, client, starboard_bot)
+        await sbleaderboard(message, client, starboard_bot)
+        await db_message.delete()
+        return
 
     userCount = 1
     valueEm = ""
     authorIndex = 0
-    for pair in list_f[0:15]:
+    for pair in list_f[2:17]:
         pair = pair.replace("\n","")
         pair = pair.split(',')
 

@@ -85,11 +85,11 @@ async def on_message(message):
         return
 
     if message.content.startswith('!sbrefresh') and message.author.id == int(author):
-        await sbrefresh(message, client, starboard_channel, starboard_bot, server)
+        await sbrefresh(message, client, starboard_bot)
         return
 
     if message.content.startswith("!sblb") or message.content.startswith('!sbleaderboard') or message.content.startswith('!starboardleaderboard'):
-        await sbleaderboard(message)
+        await sbleaderboard(message, client, starboard_bot)
         return
 
 client.run(token)

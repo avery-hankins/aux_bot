@@ -1,15 +1,33 @@
 import traceback
 from collections import defaultdict
 
-async def sbrefresh(message, client, starboard_channel, starboard_bot, server):
+async def sbrefresh(message, client, starboard_bot):
+    server_id = message.channel.guild.id
+
+    if len(message.content.split(" ")) == 2:
+        starboard_channel = message.content.split(" ")[1]
+    else:
+        try:
+            f = open(str(server_id) + "_stars.csv", "r")
+            starboard_channel = f.readlines()[0].replace("\n","")
+            f.close()
+        except:
+            await message.channel.send("No database found, please input the id of your starboard channel as !sbrefresh 123....")
+            return
+    
     starboard = client.get_channel(int(starboard_channel))
 
     pinned_dict = defaultdict(int)
     stars_dict = defaultdict(int)
     num = 1
+
+    most_recent_message = -1
     async for sbmessage in starboard.history(limit=9999):
         if sbmessage.author.id != int(starboard_bot):
             continue
+
+        if most_recent_message == -1:
+            most_recent_message = sbmessage.id
 
         embed_index = 0
         for i in range(len(sbmessage.embeds)):
@@ -30,7 +48,7 @@ async def sbrefresh(message, client, starboard_channel, starboard_bot, server):
             message_id = int(args[4])
 
         try:
-            serv = await client.fetch_guild(server)
+            serv = message.channel.guild
             chan = await serv.fetch_channel(chan_id)
             sb2message = await chan.fetch_message(message_id)
         except:
@@ -49,14 +67,31 @@ async def sbrefresh(message, client, starboard_channel, starboard_bot, server):
 
     stars_list = sorted(stars_dict.items(), key=lambda key_val: key_val[1], reverse=True)
     pinned_list = sorted(pinned_dict.items(), key=lambda key_val: key_val[1], reverse=True)
-    await message.channel.send("DONE")
 
-    f = open("stars.csv", "w")
+
+    f = open(str(server_id) + "_stars.csv", "w")
+    f.write(starboard_channel + "\n")
+    f.write(str(most_recent_message) + "\n")
     for i in range(len(stars_list)):
         f.write(stars_list[i][0]+","+str(stars_list[i][1])+"\n")
     f.close()
 
-    f = open("pinned.csv", "w")
+    f = open(str(server_id) + "_pinned.csv", "w")
+    f.write(starboard_channel + "\n")
+    f.write(str(most_recent_message) + "\n")
     for i in range(len(pinned_list)):
         f.write(pinned_list[i][0]+","+str(pinned_list[i][1])+"\n")
     f.close()
+
+    await message.channel.send("Lists refreshed!")
+
+async def recent_id(message):
+    server_id = message.channel.guild.id
+
+    f = open(str(server_id) + "_stars.csv", "r")
+    starboard_channel = f.readlines()[0].replace("\n","")
+    f.close()
+
+    starboard = await message.channel.guild.fetch_channel(int(starboard_channel))
+    async for sbmessage in starboard.history(limit=1):
+        return sbmessage.id
