@@ -1,22 +1,34 @@
 import discord
 from commands.sbrefresh import sbrefresh, recent_id
 
-async def sbleaderboard(message, client, starboard_bot):
+async def sbleaderboard(message, client, starboard_bot, threshold):
     stars = True
+    grandfathered = True
     if len(message.content.split(" ")) > 1 and message.content.split(" ")[1] == "messages":
         stars = False
+
+    for arg in message.content.split(" "):
+        if arg == "-grandfathered=False":
+            grandfathered = False;
+
 
     embedVar = discord.Embed(title="Starboard Leaderboard - Most " + str({True: "Stars", False: "Messages Pinned"}[stars]), description="", color=0xFFFF00)
 
     server_id = message.channel.guild.id
     try:
-        f = open({True: (str(server_id) + "_stars.csv"), False: (str(server_id) + "_pinned.csv")}[stars], "r")
+        file = {True: (str(server_id) + "_stars"), False: (str(server_id) + "_pinned")}[stars]
+        file += {True: (".csv"), False: ("_cut.csv")}[grandfathered]
+
+        f = open(file, "r")
         list_f = f.readlines()
         f.close()
     except:
         db_message = await message.channel.send("Database doesn't exist! Running !sbrefresh command...")
-        await sbrefresh(message, client, starboard_bot)
-        f = open({True: (str(server_id) + "_stars.csv"), False: (str(server_id) + "_pinned.csv")}[stars], "r")
+        await sbrefresh(message, client, starboard_bot, threshold)
+        file = {True: (str(server_id) + "_stars"), False: (str(server_id) + "_pinned")}[stars]
+        file += {True: (".csv"), False: ("_cut.csv")}[grandfathered]
+
+        f = open(file, "r")
         list_f = f.readlines()
         f.close()
         await db_message.delete()
@@ -45,6 +57,10 @@ async def sbleaderboard(message, client, starboard_bot):
         userCount += 1
 
     print(valueEm)
+
+    if not grandfathered:
+        await message.channel.send(content="Displaying results when counting all posts over the current star threshold.")
+
     embedVar.set_thumbnail(url="https://images.emojiterra.com/twitter/512px/2b50.png")
     embedVar.add_field(name="",value=valueEm, inline=False)
     if authorIndex != 0:

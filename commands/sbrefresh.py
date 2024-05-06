@@ -1,7 +1,7 @@
 import traceback
 from collections import defaultdict
 
-async def sbrefresh(message, client, starboard_bot):
+async def sbrefresh(message, client, starboard_bot, threshold):
     server_id = message.channel.guild.id
 
     if len(message.content.split(" ")) == 2:
@@ -19,9 +19,15 @@ async def sbrefresh(message, client, starboard_bot):
 
     pinned_dict = defaultdict(int)
     stars_dict = defaultdict(int)
+
+    #remove posts with less than the 7 threshold
+    pinned_cut_dict = defaultdict(int)
+    stars_cut_dict = defaultdict(int)
+
     num = 1
 
     most_recent_message = -1
+    await message.channel.send("Refreshing! 🌴😎🍹")
     async for sbmessage in starboard.history(limit=9999):
         if sbmessage.author.id != int(starboard_bot):
             continue
@@ -52,7 +58,7 @@ async def sbrefresh(message, client, starboard_bot):
             chan = await serv.fetch_channel(chan_id)
             sb2message = await chan.fetch_message(message_id)
         except:
-            await message.channel.send(str(num) + " Channel not found")
+            #await message.channel.send(str(num) + " Channel not found")
             traceback.print_exc()
             num += 1
             continue
@@ -62,11 +68,20 @@ async def sbrefresh(message, client, starboard_bot):
         sb_author = sb2message.author.name.replace("_", "\_")
         pinned_dict[sb_author] += 1
         stars_dict[sb_author] += int(stars)
+        pinned_cut_dict[sb_author] += 1
+        stars_cut_dict[sb_author] += int(stars)
+
+        #offset
+        if int(stars) < 7:
+            pinned_cut_dict[sb_author] -= 1
+            stars_cut_dict[sb_author] -= int(stars)
 
         num += 1
 
     stars_list = sorted(stars_dict.items(), key=lambda key_val: key_val[1], reverse=True)
     pinned_list = sorted(pinned_dict.items(), key=lambda key_val: key_val[1], reverse=True)
+    stars_cut_list = sorted(stars_cut_dict.items(), key=lambda key_val: key_val[1], reverse=True)
+    pinned_cut_list = sorted(pinned_cut_dict.items(), key=lambda key_val: key_val[1], reverse=True)
 
 
     f = open(str(server_id) + "_stars.csv", "w")
@@ -81,6 +96,20 @@ async def sbrefresh(message, client, starboard_bot):
     f.write(str(most_recent_message) + "\n")
     for i in range(len(pinned_list)):
         f.write(pinned_list[i][0]+","+str(pinned_list[i][1])+"\n")
+    f.close()
+
+    f = open(str(server_id) + "_stars_cut.csv", "w")
+    f.write(starboard_channel + "\n")
+    f.write(str(most_recent_message) + "\n")
+    for i in range(len(stars_cut_list)):
+        f.write(stars_cut_list[i][0]+","+str(stars_cut_list[i][1])+"\n")
+    f.close()
+
+    f = open(str(server_id) + "_pinned_cut.csv", "w")
+    f.write(starboard_channel + "\n")
+    f.write(str(most_recent_message) + "\n")
+    for i in range(len(pinned_cut_list)):
+        f.write(pinned_cut_list[i][0]+","+str(pinned_cut_list[i][1])+"\n")
     f.close()
 
     await message.channel.send("Lists refreshed!")

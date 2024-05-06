@@ -11,9 +11,10 @@ art = os.getenv('ART')
 gif = os.getenv('GIF')
 real_string = os.getenv('REAL_STRING')
 
-starboard_channel = os.getenv('STARBOARD_CHANNEL')
+#starboard_channel = os.getenv('STARBOARD_CHANNEL')
 starboard_bot = os.getenv('STARBOARD_BOT')
-server = os.getenv('SERVER')
+#server = os.getenv('SERVER')
+threshold = os.getenv('STAR_THRESHOLD')
 
 year = "2024" #assume year is 2024
 
@@ -85,11 +86,11 @@ async def on_message(message):
         return
 
     if message.content.startswith('!sbrefresh') and message.author.id == int(author):
-        await sbrefresh(message, client, starboard_bot)
+        await sbrefresh(message, client, starboard_bot, threshold)
         return
 
     if message.content.startswith("!sblb") or message.content.startswith('!sbleaderboard') or message.content.startswith('!starboardleaderboard'):
-        await sbleaderboard(message, client, starboard_bot)
+        await sbleaderboard(message, client, starboard_bot, threshold)
         return
 
 client.run(token)
