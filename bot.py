@@ -42,9 +42,6 @@ async def on_message(message):
     if message.author == client.user:
         return
 
-    if str(message.author.id) == os.getenv("USER1"):
-        await message.add_reaction('👎')
-
     if str(message.author.id) == author:
         await user_functions.function(client, message)
 
