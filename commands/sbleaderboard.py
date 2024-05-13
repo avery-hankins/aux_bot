@@ -9,7 +9,7 @@ async def sbleaderboard(message, client, starboard_bot, threshold):
 
     for arg in message.content.split(" "):
         if arg == "-grandfathered=False":
-            grandfathered = False;
+            grandfathered = False
 
 
     embedVar = discord.Embed(title="Starboard Leaderboard - Most " + str({True: "Stars", False: "Messages Pinned"}[stars]), description="", color=0xFFFF00)
@@ -36,8 +36,8 @@ async def sbleaderboard(message, client, starboard_bot, threshold):
     recent_id_val = await recent_id(message)
     if int(list_f[1]) != int(recent_id_val):
         db_message = await message.channel.send("Database needs to update! Running !sbrefresh command...")
-        await sbrefresh(message, client, starboard_bot)
-        await sbleaderboard(message, client, starboard_bot)
+        await sbrefresh(message, client, starboard_bot, threshold)
+        await sbleaderboard(message, client, starboard_bot, threshold)
         await db_message.delete()
         return
 
