@@ -19,6 +19,7 @@ threshold = os.getenv('STAR_THRESHOLD')
 year = "2024" #assume year is 2024
 
 from commands.battle import battle
+from commands.jamble import *
 from commands.meeting import meeting
 from commands.rymalbum import rymalbum
 from commands.rymchart import rymchart
@@ -29,6 +30,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
+jamble_state = None
+jamble_artist = None
+
 client = discord.Client(intents=intents)
 
 @client.event
@@ -38,12 +42,22 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    global jamble_state, jamble_artist
 
     if message.author == client.user:
         return
 
     if str(message.author.id) == author:
         await user_functions.function(client, message)
+
+    if jamble_state is not None and message.channel.id == jamble_state.channel.id:
+        done = await jamble_continue(message, jamble_artist)
+
+        if done:
+            jamble_state = None
+            jamble_artist = None
+
+        return
 
     if message.content.startswith('!battle'):
         await battle(message, lastfmKey)
@@ -64,6 +78,10 @@ async def on_message(message):
 
     if message.content.startswith('!donate'):
         await message.channel.send(f"{gif}")
+        return
+
+    if message.content.startswith("!jambmle") or message.content.startswith("!jamble") or message.content.startswith("!j"):
+        [jamble_state, jamble_artist] = await jamble(message, lastfmKey)
         return
 
     if message.content.startswith('!meeting'):
@@ -89,5 +107,18 @@ async def on_message(message):
     if message.content.startswith("!sblb") or message.content.startswith('!sbleaderboard') or message.content.startswith('!starboardleaderboard'):
         await sbleaderboard(message, client, starboard_bot, threshold)
         return
+
+
+@client.event
+async def on_reaction_add(reaction, user):
+    global jamble_state, jamble_artist
+    message = reaction.message
+    if jamble_state is not None and message.id == jamble_state.id:
+        if reaction.emoji == "😞":
+            await message.channel.send(f"Loser {user.mention} gave up.")
+            await message.channel.send(f"Artist: {jamble_artist}")
+            jamble_state = None
+            jamble_artist = None
+            return
 
 client.run(token)
