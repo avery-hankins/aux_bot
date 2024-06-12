@@ -2,6 +2,7 @@ import discord
 import os
 from dotenv import load_dotenv
 import user_functions
+import asyncio
 
 load_dotenv()
 token = os.getenv('TOKEN')
@@ -32,6 +33,7 @@ intents.members = True
 
 jamble_state = None
 jamble_artist = None
+jamble_user = None
 
 client = discord.Client(intents=intents)
 
@@ -42,7 +44,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    global jamble_state, jamble_artist
+    global jamble_state, jamble_artist, jamble_user
 
     if message.author == client.user:
         return
@@ -56,6 +58,7 @@ async def on_message(message):
         if done:
             jamble_state = None
             jamble_artist = None
+            jamble_user = None
 
         return
 
@@ -81,7 +84,20 @@ async def on_message(message):
         return
 
     if message.content.startswith("!jambmle") or message.content.startswith("!jamble") or message.content.startswith("!j"):
-        [jamble_state, jamble_artist] = await jamble(message, lastfmKey)
+        [jamble_state, jamble_artist, jamble_user] = await jamble(message, lastfmKey)
+        jamble_state_copy = jamble_state
+
+        await asyncio.sleep(30)
+
+        if jamble_state != jamble_state_copy: # check if game is over already, or new game has been started
+            return
+
+        await message.channel.send(f"Time's up! Artist: {jamble_artist}")
+
+        jamble_state = None
+        jamble_artist = None
+        jamble_user = None
+
         return
 
     if message.content.startswith('!meeting'):
@@ -111,14 +127,15 @@ async def on_message(message):
 
 @client.event
 async def on_reaction_add(reaction, user):
-    global jamble_state, jamble_artist
+    global jamble_state, jamble_artist, jamble_user
     message = reaction.message
-    if jamble_state is not None and message.id == jamble_state.id:
+    if jamble_state is not None and message.id == jamble_state.id and user.id == jamble_user.id:
         if reaction.emoji == "😞":
             await message.channel.send(f"Loser {user.mention} gave up.")
             await message.channel.send(f"Artist: {jamble_artist}")
             jamble_state = None
             jamble_artist = None
+            jamble_user = None
             return
 
 client.run(token)

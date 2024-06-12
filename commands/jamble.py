@@ -5,7 +5,7 @@ import discord
 headers = {'Accept': 'application/json'}
 
 
-async def jamble(message, lastfmKey) -> [discord.Message, str]:
+async def jamble(message, lastfmKey) -> [discord.Message, str, discord.Member | discord.User]:
     args = message.content.split()[1:]
     if len(args) == 0:
         user = "mostlikelyhuman"
@@ -31,10 +31,10 @@ async def jamble(message, lastfmKey) -> [discord.Message, str]:
     [random.shuffle(word) for word in artist_shuffle]
     artist_shuffle = " ".join(["".join(word) for word in artist_shuffle])
 
-    sent = await message.channel.send("Jamble: " + artist_shuffle)
+    sent = await message.channel.send("Jamble, 30 seconds to answer: " + artist_shuffle)
     await sent.add_reaction("😞")
 
-    return [sent, artist]
+    return [sent, artist, message.author]
 
 async def jamble_continue(message, artist) -> bool:
     if message.content.upper() == artist.upper():
