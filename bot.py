@@ -20,6 +20,7 @@ threshold = os.getenv('STAR_THRESHOLD')
 year = "2024" #assume year is 2024
 
 from commands.battle import battle
+from commands.brat import bratify
 from commands.jamble import *
 from commands.meeting import meeting
 from commands.rymalbum import rymalbum
@@ -64,6 +65,10 @@ async def on_message(message):
 
     if message.content.startswith('!battle'):
         await battle(message, lastfmKey)
+        return
+
+    if message.content.startswith('!brat'):
+        await bratify(message)
         return
 
     if message.content.startswith('!help'):
