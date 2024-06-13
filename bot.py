@@ -112,6 +112,9 @@ async def on_message(message):
             return
 
         [game_message, game_answer, game_creator] = await jamble(message, lastfmKey)
+        if game_message is None:
+            return
+        
         game_type = "jamble"
         jamble_state_copy = game_message
 
