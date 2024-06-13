@@ -19,8 +19,9 @@ threshold = os.getenv('STAR_THRESHOLD')
 
 year = "2024" #assume year is 2024
 
+from commands.albumguess import *
 from commands.battle import battle
-from commands.brat import bratify
+from commands.brat import *
 from commands.jamble import *
 from commands.meeting import meeting
 from commands.rymalbum import rymalbum
@@ -32,11 +33,21 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-jamble_state = None
-jamble_artist = None
-jamble_user = None
+game_message = None
+game_answer = None
+game_creator = None
+game_type = None # should be "albumguess" or "jamble", etc
+game_stage = 0
 
 client = discord.Client(intents=intents)
+
+def reset_game():
+    global game_message, game_answer, game_creator, game_type, game_stage
+    game_message = None
+    game_answer = None
+    game_creator = None
+    game_type = None
+    game_stage = 0
 
 @client.event
 async def on_ready():
@@ -45,7 +56,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    global jamble_state, jamble_artist, jamble_user
+    global game_message, game_answer, game_creator, game_type, game_stage
 
     if message.author == client.user:
         return
@@ -53,14 +64,20 @@ async def on_message(message):
     if str(message.author.id) == author:
         await user_functions.function(client, message)
 
-    if jamble_state is not None and message.channel.id == jamble_state.channel.id:
-        done = await jamble_continue(message, jamble_artist)
+    if game_type == "jamble" and message.channel.id == game_message.channel.id:
+        done = await jamble_continue(message, game_answer)
+        if done: reset_game()
 
-        if done:
-            jamble_state = None
-            jamble_artist = None
-            jamble_user = None
+        return
 
+    if game_type == "albumguess" and message.channel.id == game_message.channel.id:
+        game_stage = await albumguess_continue(message, game_answer)
+        if done: reset_game()
+
+        return
+
+    if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
+        await albumguess(message, lastfmKey)
         return
 
     if message.content.startswith('!battle'):
@@ -68,7 +85,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('!brat'):
-        await bratify(message)
+        await brat(message, lastfmKey)
         return
 
     if message.content.startswith('!help'):
@@ -89,19 +106,21 @@ async def on_message(message):
         return
 
     if message.content.startswith("!jambmle") or message.content.startswith("!jamble") or message.content.startswith("!j"):
-        [jamble_state, jamble_artist, jamble_user] = await jamble(message, lastfmKey)
-        jamble_state_copy = jamble_state
+        if game_type == "jamble":
+            await message.channel.send(f"A game is already in progress. Please wait until it's over.") # TODO multiple games
+            return
+
+        [game_message, game_answer, game_creator] = await jamble(message, lastfmKey)
+        game_type = "jamble"
+        jamble_state_copy = game_message
 
         await asyncio.sleep(30)
 
-        if jamble_state != jamble_state_copy: # check if game is over already, or new game has been started
+        if game_message != jamble_state_copy: # check if game is over already, or new game has been started
             return
 
-        await message.channel.send(f"Time's up! Artist: {jamble_artist}")
-
-        jamble_state = None
-        jamble_artist = None
-        jamble_user = None
+        await message.channel.send(f"Time's up! Artist: {game_answer}")
+        reset_game()
 
         return
 
@@ -132,15 +151,13 @@ async def on_message(message):
 
 @client.event
 async def on_reaction_add(reaction, user):
-    global jamble_state, jamble_artist, jamble_user
+    global game_message, game_answer, game_creator
     message = reaction.message
-    if jamble_state is not None and message.id == jamble_state.id and user.id == jamble_user.id:
+    if game_message is not None and message.id == game_message.id and user.id == game_creator.id:
         if reaction.emoji == "😞":
             await message.channel.send(f"Loser {user.mention} gave up.")
-            await message.channel.send(f"Artist: {jamble_artist}")
-            jamble_state = None
-            jamble_artist = None
-            jamble_user = None
+            await message.channel.send(f"Artist: {game_answer}")
+            reset_game()
             return
 
 client.run(token)

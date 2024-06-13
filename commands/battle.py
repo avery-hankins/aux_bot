@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 import discord
 import io, cv2
+import commands.chart_utils as chart_utils
 
 headers = {'Accept': 'application/json'}
 
@@ -18,18 +19,7 @@ async def battle(message, lastfmKey):
     image = []
 
     #handle wrong user input
-    if period == "alltime" or period == "all" or period == "o" or period == "a":
-        period = "overall"
-    elif period == "1year" or period == "year" or period == "yearly" or period == "y":
-        period = "12month"
-    elif period == "month" or period == "monthly" or period == "m":
-        period = "1month"
-    elif period == "1week" or period == "week" or period == "weekly" or period == "w":
-        period = "7day"
-    elif period == "quarter" or period == "quarterly" or period == "3m" or period == "q":
-        period = "3month"
-    elif period == "6m" or period == "h" or period == "half" or period == "halfyear":
-        period = "6month"
+    period = chart_utils.parseperiod(period)
 
     if period != "overall" and period != "7day" and period != "1month" and period != "3month" and period != "6month" and period != "12month":
         await message.channel.send("Please select a timeframe for recent plays (7day, 1month, 3month, 6month, 12month, or overall)")

@@ -1,9 +1,66 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import discord
+import requests
+import commands.chart_utils as chart_utils
 
-async def bratify(message):
+async def brat(message, lastfmKey):
     args = message.content.split()[1:]
-    text = " ".join(args)
+
+    if args[0] == "-chart" or args[0] == "-c":
+        if len(args) < 2:
+            user = "mostlikelyhuman"
+        else:
+            user = args[1]
+
+        if len(args) > 2:
+            period = chart_utils.parseperiod(args[2])
+        else:
+            period = "7day"
+
+        if len(args) > 3:
+            size = chart_utils.parsechartsize(args[3])
+
+            if size[0] * size[1] > 150:
+                await message.reply("Erm, what the sigma")
+                return
+        else:
+            size = [3, 3]
+
+        headers = {'Accept': 'application/json'}
+
+        ims = []
+        for i in range(1, 1 + size[0] * size[1]):
+            r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user
+                             + '&limit=1&page=' + str(i) + '&api_key=' + lastfmKey + '&period=' + period + '&format=json', headers=headers)
+            rawjson = r.json()
+
+            if "message" in rawjson and rawjson['message'] == "User not found":
+                await message.channel.send("UH OH")
+                return
+
+            album_name = rawjson['topalbums']['album'][0]['name']
+            album_name = album_name.lower()
+
+            ims.append(await bratify(message, album_name))
+
+        w = size[0] * 500
+        h = size[1] * 500
+        brat_chart = Image.new("RGB", (w, h))
+
+        for i in range(size[0]):
+            for j in range(size[1]):
+                brat_chart.paste(ims[j * size[0] + i], (i * 500, j * 500))
+
+        brat_chart.save("brat.png", "PNG")
+
+        await message.channel.send(file=discord.File("brat.png"))
+    else:
+        im = await bratify(message, " ".join(args))
+        im.save("brat.png", "PNG")
+        await message.channel.send(file=discord.File("brat.png"))
+
+
+async def bratify(message, text) -> Image:
     print(text)
     W, H = (500,500)
 
@@ -47,5 +104,6 @@ async def bratify(message):
     draw.text(((W-w)/2,(H-h)/2), text, fill="black", font=arial, align="center")
 
     im = im.filter(ImageFilter.GaussianBlur(radius=2))
-    im.save("brat.png", "PNG")
-    await message.channel.send(file=discord.File("brat.png"))
+    #im.save("brat.png", "PNG")
+    #await message.channel.send(file=discord.File("brat.png"))
+    return im
