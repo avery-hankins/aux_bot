@@ -2,23 +2,25 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import discord
 import requests
 import commands.chart_utils as chart_utils
+from commands.connect import find_user
 
 async def brat(message, lastfmKey):
     args = message.content.split()[1:]
 
     if args[0] == "-chart" or args[0] == "-c":
-        if len(args) < 2:
-            user = "mostlikelyhuman"
-        else:
-            user = args[1]
+        user = find_user(message.author.id)
 
-        if len(args) > 2:
-            period = chart_utils.parseperiod(args[2])
+        if user is None:
+            await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect USERNAME.")
+            return
+
+        if len(args) > 1:
+            period = chart_utils.parseperiod(args[1])
         else:
             period = "7day"
 
-        if len(args) > 3:
-            size = chart_utils.parsechartsize(args[3])
+        if len(args) > 2:
+            size = chart_utils.parsechartsize(args[2])
 
             if size[0] * size[1] > 150:
                 await message.reply("Erm, what the sigma")

@@ -1,16 +1,19 @@
 import requests
 import random
 import discord
+from commands.connect import find_user
 
 headers = {'Accept': 'application/json'}
 
 
 async def jamble(message, lastfmKey) -> [discord.Message, str, discord.Member | discord.User]:
     args = message.content.split()[1:]
-    if len(args) == 0:
-        user = "mostlikelyhuman"
-    else:
-        user = args[0]
+
+    user = find_user(message.author.id)
+
+    if user is None:
+        await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect USERNAME.")
+        return [None, None, None]
 
     num = random.randint(1, 500)
 
@@ -20,7 +23,7 @@ async def jamble(message, lastfmKey) -> [discord.Message, str, discord.Member | 
 
     if "message" in rawjson and rawjson['message'] == "User not found":
         await message.channel.send("UH OH")
-        return [None, None]
+        return [None, None, None]
 
     artist = rawjson['topartists']['artist'][0]['name']
     print(artist)

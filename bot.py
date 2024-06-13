@@ -22,6 +22,7 @@ year = "2024" #assume year is 2024
 from commands.albumguess import *
 from commands.battle import battle
 from commands.brat import *
+from commands.connect import connect
 from commands.jamble import *
 from commands.meeting import meeting
 from commands.rymalbum import rymalbum
@@ -122,6 +123,10 @@ async def on_message(message):
         await message.channel.send(f"Time's up! Artist: {game_answer}")
         reset_game()
 
+        return
+
+    if message.content.startswith('!connect'):
+        await connect(message)
         return
 
     if message.content.startswith('!meeting'):
