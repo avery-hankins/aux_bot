@@ -4,8 +4,13 @@ import requests
 import commands.chart_utils as chart_utils
 from commands.connect import find_user
 
+
 async def brat(message, lastfmKey):
     args = message.content.split()[1:]
+
+    if len(args) == 0:
+        await message.channel.send("Usage: !brat [text], or !brat -chart")
+        return
 
     if args[0] == "-chart" or args[0] == "-c":
         user = find_user(message.author.id)

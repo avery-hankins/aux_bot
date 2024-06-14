@@ -19,6 +19,7 @@ threshold = os.getenv('STAR_THRESHOLD')
 
 year = "2024" #assume year is 2024
 
+from games import *
 from commands.albumguess import *
 from commands.battle import battle
 from commands.brat import *
@@ -34,21 +35,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-game_message = None
-game_answer = None
-game_creator = None
-game_type = None # should be "albumguess" or "jamble", etc
-game_stage = 0
+game = Game()
 
 client = discord.Client(intents=intents)
-
-def reset_game():
-    global game_message, game_answer, game_creator, game_type, game_stage
-    game_message = None
-    game_answer = None
-    game_creator = None
-    game_type = None
-    game_stage = 0
 
 @client.event
 async def on_ready():
@@ -57,7 +46,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    global game_message, game_answer, game_creator, game_type, game_stage
+    global game
 
     if message.author == client.user:
         return
@@ -65,20 +54,30 @@ async def on_message(message):
     if str(message.author.id) == author:
         await user_functions.function(client, message)
 
-    if game_type == "jamble" and message.channel.id == game_message.channel.id:
-        done = await jamble_continue(message, game_answer)
-        if done: reset_game()
+    if game.type == "Jamble" and game.same_channel(message):
+        done = await jamble_continue(message, game.answer)
+        if done: game.reset()
 
         return
 
-    if game_type == "albumguess" and message.channel.id == game_message.channel.id:
-        game_stage = await albumguess_continue(message, game_answer)
-        if done: reset_game()
+    if game.type == "AlbumGuess" and game.same_channel(message):
+        done = await albumguess_continue(message, game)
 
-        return
+        if done or len(game.images) == 0:
+            if len(game.images) == 0:
+                await message.channel.send(f"Incorrect! Album: {game.answer}")
+
+            game.final_image.save("art_1.png")
+            await message.channel.send(file=discord.File("art_1.png"))
+
+            game.reset()
 
     if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
-        await albumguess(message, lastfmKey)
+        game = AlbumGuess(*(await albumguess(message, lastfmKey)))
+
+        if game.message is None:
+            return
+
         return
 
     if message.content.startswith('!battle'):
@@ -107,24 +106,23 @@ async def on_message(message):
         return
 
     if message.content.startswith("!jambmle") or message.content.startswith("!jamble") or message.content.startswith("!j"):
-        if game_type == "jamble":
+        if game.type == "Jamble":
             await message.channel.send(f"A game is already in progress. Please wait until it's over.") # TODO multiple games
             return
 
-        [game_message, game_answer, game_creator] = await jamble(message, lastfmKey)
-        if game_message is None:
+        game = Jamble(*(await jamble(message, lastfmKey)))  # pass results of jamble in
+        if game.message is None:
             return
-        
-        game_type = "jamble"
-        jamble_state_copy = game_message
+
+        jamble_message_copy = game.message
 
         await asyncio.sleep(30)
 
-        if game_message != jamble_state_copy: # check if game is over already, or new game has been started
+        if game.message != jamble_message_copy: # check if game is over already, or new game has been started
             return
 
-        await message.channel.send(f"Time's up! Artist: {game_answer}")
-        reset_game()
+        await message.channel.send(f"Time's up! Artist: {game.answer}")
+        game.reset()
 
         return
 
@@ -159,13 +157,13 @@ async def on_message(message):
 
 @client.event
 async def on_reaction_add(reaction, user):
-    global game_message, game_answer, game_creator
+    global game
     message = reaction.message
-    if game_message is not None and message.id == game_message.id and user.id == game_creator.id:
+    if game.message is not None and game.match(message, user):
         if reaction.emoji == "😞":
             await message.channel.send(f"Loser {user.mention} gave up.")
-            await message.channel.send(f"Artist: {game_answer}")
-            reset_game()
+            await message.channel.send(f"Artist: {game.answer}")
+            game.reset()
             return
 
 client.run(token)
