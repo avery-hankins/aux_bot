@@ -15,9 +15,11 @@ class Game:
         self.creator = None
         self.type = None
 
-    def match(self, message: discord.message, user: discord.user = None) -> bool:
+    def match(self, message: discord.message = None, user: discord.user = None) -> bool:
         if user is None:
             return message.id == self.message.id
+        if message is None:
+            return user.id == self.creator.id
         else:
             return message.id == self.message.id and user.id == self.creator.id
 
@@ -35,7 +37,9 @@ class AlbumGuess(Game):
         super().__init__(message, answer, creator, "AlbumGuess")
         self.images = images
         self.final_image = final_image
+        self.end = False
 
     def reset(self):
         super().reset()
         self.images = None
+        self.end = False

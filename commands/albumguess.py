@@ -15,7 +15,7 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
     user = find_user(message.author.id)
 
     if user is None:
-        await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect USERNAME.")
+        await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect [username].")
         return [None, None, None, None]
 
     num = random.randint(1, 500)
@@ -29,6 +29,11 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
         return [None, None, None, None]
 
     art_link = rawjson['topalbums']['album'][0]['image'][3]['#text']
+
+    if art_link == "":
+        await message.channel.send("Error: no album art found for this release, please try again.")
+        return [None, None, None, None]
+
     album_name = rawjson['topalbums']['album'][0]['name']
 
     hint_name = album_name.split(" ")
@@ -38,35 +43,32 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
     art_content = requests.get(art_link, allow_redirects=True)
     open('art.png', 'wb').write(art_content.content)
 
-    pixeled = pixelate('art.png', 0.03)
+    pixeled = pixelate('art.png', 0.02)
     pixeled.save('art_1.png')
 
     images = []
-    images.append(pixelate('art.png', 0.06))
-    images.append(pixelate('art.png', 0.15))
-    images.append(pixelate('art.png', 0.40))
+    images.append(pixelate('art.png', 0.05))
+    images.append(pixelate('art.png', 0.12))
+    images.append(pixelate('art.png', 0.30))
     final_image = pixelate("art.png", 1)
 
     sent = await message.channel.send(file=discord.File("art_1.png"))
     await message.channel.send(f"Hint: {hint_name}")
     return [sent, album_name, message.author, images, final_image]
-    # await message.channel.send(file=discord.File("art_2.png"))
-    # await message.channel.send(file=discord.File("art_3.png"))
-    # await message.channel.send(file=discord.File("art_4.png"))
-    # await message.channel.send(file=discord.File("art.png"))
 
 
-async def albumguess_continue(message: discord.Message, game: AlbumGuess) -> bool:
+async def albumguess_continue(message: discord.Message, game: AlbumGuess) -> (bool, bool):
     if message.content.lower() == game.answer.lower():
-        await message.channel.send("Album Guess: Correct!")
-        await message.add_reaction("👍")
-        return True
+        return True, True
+
+    if len(game.images) == 0:
+        return True, False
 
     image = game.images.pop(0)
     image.save("art_1.png")
 
     await message.channel.send(file=discord.File("art_1.png"))
-    return False
+    return False, None
 
 
 def pixelate(image_path, pixelation_amount):  # taken from https://medium.com/@charlietapsell1989/python-pixelation-6fc490307a05

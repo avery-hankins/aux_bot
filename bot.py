@@ -60,17 +60,22 @@ async def on_message(message):
 
         return
 
-    if game.type == "AlbumGuess" and game.same_channel(message):
-        done = await albumguess_continue(message, game)
+    if game.type == "AlbumGuess" and game.same_channel(message) and game.match(user=message.author):
+        game.end, win = await albumguess_continue(message, game)
 
-        if done or len(game.images) == 0:
-            if len(game.images) == 0:
-                await message.channel.send(f"Incorrect! Album: {game.answer}")
-
+        if game.end:
             game.final_image.save("art_1.png")
-            await message.channel.send(file=discord.File("art_1.png"))
+
+            points = "**" + str(len(game.images) + int(win)) + "/4 points**"
+            if not win:
+                await message.channel.send(content=f"Incorrect! Album: {game.answer}, {points}", file=discord.File("art_1.png"))
+            else:
+                await message.channel.send(content=f"Album Guess: Correct! {points}", file=discord.File("art_1.png"))
+                await message.add_reaction("👍")
 
             game.reset()
+
+            return
 
     if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
         game = AlbumGuess(*(await albumguess(message, lastfmKey)))
