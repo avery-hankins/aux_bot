@@ -9,7 +9,7 @@ from games import *
 headers = {'Accept': 'application/json'}
 
 
-async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Member | discord.User, [Image], Image]:
+async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Member | discord.User, [Image], Image, discord.Message]:
     args = message.content.split()[1:]
 
     user = find_user(message.author.id)
@@ -53,8 +53,9 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
     final_image = pixelate("art.png", 1)
 
     sent = await message.channel.send(file=discord.File("art_1.png"))
-    await message.channel.send(f"Hint: {hint_name}")
-    return [sent, album_name, message.author, images, final_image]
+    hint_message = await message.channel.send(f"Hint: {hint_name}")
+    await hint_message.add_reaction("😞")
+    return [sent, album_name, message.author, images, final_image, hint_message]
 
 
 async def albumguess_continue(message: discord.Message, game: AlbumGuess) -> (bool, bool):
@@ -67,7 +68,7 @@ async def albumguess_continue(message: discord.Message, game: AlbumGuess) -> (bo
     image = game.images.pop(0)
     image.save("art_1.png")
 
-    await message.channel.send(file=discord.File("art_1.png"))
+    await game.message.edit(attachments=[discord.File("art_1.png")])
     return False, None
 
 
