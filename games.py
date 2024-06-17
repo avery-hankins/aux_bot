@@ -51,5 +51,5 @@ class AlbumGuess(Game):
     def match_hint(self, message: discord.message) -> bool:
         if self.hint_message is None:
             return False
-        
+
         return message.id == self.hint_message.id

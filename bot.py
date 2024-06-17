@@ -35,7 +35,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-game = Game()
+game = dict()  # currently running games
 
 client = discord.Client(intents=intents)
 
@@ -54,34 +54,38 @@ async def on_message(message):
     if str(message.author.id) == author:
         await user_functions.function(client, message)
 
-    if isinstance(game, Jamble) and game.same_channel(message):
-        done = await jamble_continue(message, game.answer)
-        if done: game = Game()
-
-        return
-
-    if isinstance(game, AlbumGuess) and game.same_channel(message) and game.match(user=message.author):
-        game.end, win = await albumguess_continue(message, game)
-
-        if game.end:
-            game.final_image.save("art_1.png")
-
-            points = "**" + str(len(game.images) + int(win)) + "/4 points**"
-            await game.message.edit(attachments=[discord.File("art_1.png")])
-            if not win:
-                await message.channel.send(content=f"Incorrect! Album: {game.answer}, {points}")
-            else:
-                await message.channel.send(content=f"Album Guess: Correct! {points}")
-                await message.add_reaction("👍")
-
-            game.reset()
+    if message.author.id in game and game[message.author.id].same_channel(message):
+        user_game = game[message.author.id]
+        if isinstance(user_game, Jamble):
+            done = await jamble_continue(message, user_game.answer)
+            if done: game.pop(message.author.id)
 
             return
+        if isinstance(user_game, AlbumGuess):
+            user_game.end, win = await albumguess_continue(message, user_game)
+
+            if user_game.end:
+                user_game.final_image.save("art_1.png")
+
+                points = "**" + str(len(user_game.images) + int(win)) + "/4 points**"
+                await user_game.message.edit(attachments=[discord.File("art_1.png")])
+                if not win:
+                    await message.channel.send(content=f"Incorrect! Album: {user_game.answer}, {points}")
+                else:
+                    await message.channel.send(content=f"Album Guess: Correct! {points}")
+                    await message.add_reaction("👍")
+
+                game.pop(message.author.id)
+
+                return
+            return
+
+
 
     if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
-        game = AlbumGuess(*(await albumguess(message, lastfmKey)))
+        game[message.author.id] = AlbumGuess(*(await albumguess(message, lastfmKey)))
 
-        if game.message is None:
+        if game[message.author.id].message is None:
             return
 
         return
@@ -112,23 +116,24 @@ async def on_message(message):
         return
 
     if message.content.startswith("!jambmle") or message.content.startswith("!jamble") or message.content.startswith("!j"):
-        if isinstance(game, Jamble):
+        if message.author.id in game and isinstance(game[message.author.id], Jamble):
             await message.channel.send(f"A game is already in progress. Please wait until it's over.") # TODO multiple games
             return
 
-        game = Jamble(*(await jamble(message, lastfmKey)))  # pass results of jamble in
-        if game.message is None:
+        game[message.author.id] = Jamble(*(await jamble(message, lastfmKey)))  # pass results of jamble in
+        user_game = game[message.author.id]
+        if user_game.message is None:
             return
 
-        jamble_message_copy = game.message
+        jamble_message_copy = user_game.message
 
         await asyncio.sleep(30)
 
-        if game.message != jamble_message_copy: # check if game is over already, or new game has been started
+        if user_game.message != jamble_message_copy: # check if game is over already, or new game has been started
             return
 
-        await message.channel.send(f"Time's up! Artist: {game.answer}")
-        game.reset()
+        await message.channel.send(f"Time's up! Artist: {user_game.answer}")
+        game.pop(message.author.id)
 
         return
 
@@ -165,22 +170,24 @@ async def on_message(message):
 async def on_reaction_add(reaction, user):
     global game
     message = reaction.message
-    if isinstance(game, Jamble) and game.match(message, user):
-        if reaction.emoji == "😞":
-            await message.channel.send(f"{user.mention} gave up.")
-            await message.channel.send(f"Artist: {game.answer}")
-            game = Game()
-            return
-    if isinstance(game, AlbumGuess) and game.match_hint(message) and game.match(user=user):
-        if reaction.emoji == "😞":
-            game.final_image.save("art_1.png")
+    if user.id in game:
+        user_game = game[user.id]
+        if isinstance(user_game, Jamble) and user_game.match(message, user):
+            if reaction.emoji == "😞":
+                await message.channel.send(f"{user.mention} gave up.")
+                await message.channel.send(f"Artist: {user_game.answer}")
+                game.pop(user.id)
+                return
+        if isinstance(user_game, AlbumGuess) and user_game.match_hint(message) and user_game.match(user=user):
+            if reaction.emoji == "😞":
+                user_game.final_image.save("art_1.png")
 
-            points = "**0/4 points**"
-            await game.message.edit(attachments=[discord.File("art_1.png")])
+                points = "**0/4 points**"
+                await user_game.message.edit(attachments=[discord.File("art_1.png")])
 
-            await message.channel.send(f"{user.mention} gave up.")
-            await message.channel.send(f"Album: {game.answer}, {points}")
-            game = Game()
-            return
+                await message.channel.send(f"{user.mention} gave up.")
+                await message.channel.send(f"Album: {user_game.answer}, {points}")
+                game.pop(user.id)
+                return
 
 client.run(token)
