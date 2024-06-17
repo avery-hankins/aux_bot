@@ -16,7 +16,7 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
 
     if user is None:
         await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect [username].")
-        return [None, None, None, None]
+        return [None, None, None, None, None, None]
 
     num = random.randint(1, 500)
 
@@ -26,13 +26,13 @@ async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Membe
 
     if "message" in rawjson and rawjson['message'] == "User not found":
         await message.channel.send("UH OH")
-        return [None, None, None, None]
+        return [None, None, None, None, None, None]
 
     art_link = rawjson['topalbums']['album'][0]['image'][3]['#text']
 
     if art_link == "":
         await message.channel.send("Error: no album art found for this release, please try again.")
-        return [None, None, None, None]
+        return [None, None, None, None, None, None]
 
     album_name = rawjson['topalbums']['album'][0]['name']
 
