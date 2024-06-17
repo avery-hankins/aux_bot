@@ -1,10 +1,9 @@
-import cv2
 import numpy as np
 import requests
 from PIL import Image, ImageDraw, ImageFont
 import random
 import discord
-import io, cv2
+import io
 import commands.chart_utils as chart_utils
 
 headers = {'Accept': 'application/json'}
@@ -60,13 +59,14 @@ async def battle(message, lastfmKey):
 
         columns = []
         if len(pfp) == 0:
-            cv_pfp = cv2.resize(np.array(Image.open("assets/lfmdefault.jpeg")), (174,174))
-            cv_pfp = cv2.cvtColor(np.array(cv_pfp), cv2.COLOR_RGB2RGBA)
+            cv_pfp = Image.open("assets/lfmdefault.jpeg")
+            cv_pfp = cv_pfp.resize((174,174), Image.Resampling.LANCZOS)
+            cv_pfp = cv_pfp.convert("RGBA")
         else:
             init_pfp = requests.get(pfp)
             bytes_pfp = io.BytesIO(init_pfp.content)
-            cv_pfp = cv2.cvtColor(np.array(Image.open(bytes_pfp)), cv2.COLOR_RGB2BGR)
-            cv_pfp = cv2.cvtColor(cv_pfp, cv2.COLOR_BGR2RGBA)
+            cv_pfp = Image.open(bytes_pfp)
+            cv_pfp = cv_pfp.convert("RGBA")
 
         columns.append(cv_pfp)
         columns.append(np.zeros((32, 174, 4), dtype = np.uint8))
@@ -74,8 +74,8 @@ async def battle(message, lastfmKey):
             if len(album['image'][2]['#text']) > 0:
                 init_im = requests.get(album['image'][2]['#text'])
                 bytes_im = io.BytesIO(init_im.content)
-                cv_im = cv2.cvtColor(np.array(Image.open(bytes_im)), cv2.COLOR_RGB2BGR)
-                cv_im = cv2.cvtColor(cv_im, cv2.COLOR_BGR2RGBA)
+                cv_im = Image.open(bytes_im)
+                cv_im = cv_im.convert("RGBA")
             else:
                 blank_album = 255 * np.ones((174, 174, 4), dtype=np.uint8)
                 blank_album = Image.fromarray(blank_album)
@@ -143,12 +143,17 @@ async def battle(message, lastfmKey):
 
     # load background image
     random_bg = random.randint(0, 7)
-    back = cv2.cvtColor(np.array(Image.open(f"assets/bg_{str(random_bg)}.jpeg")), cv2.COLOR_RGB2BGR)
-    back = cv2.cvtColor(back, cv2.COLOR_BGR2RGBA)
-    back = np.array(back)
-    hh, ww = back.shape[:2]
-    back = cv2.resize(back, (round(ww * refactor_scale), round(hh * refactor_scale)))
-    hh, ww = back.shape[:2]
+    back_small = Image.open(f"assets/bg_{str(random_bg)}.jpeg")
+    width = back_small.size[0]
+    final_height = round(300+h/refactor_scale)
+    back_small = back_small.crop((0, 0, width, final_height))
+    back_small = back_small.convert("RGBA")
+    hh, ww = np.asarray(back_small).shape[:2]
+
+    back = back_small.resize((round(ww * refactor_scale), round(hh * refactor_scale)))
+    del back_small # freeing memory
+    hh = round(hh * refactor_scale)
+    ww = round(ww * refactor_scale)
     print(hh,ww)
 
     # compute xoff and yoff for placement of upper left corner of resized image
@@ -157,18 +162,22 @@ async def battle(message, lastfmKey):
     print(yoff,xoff)
 
     # use numpy indexing to place the resized image in the center of background image
-    result = back.copy()
-    result[round(200*refactor_scale):round(200*refactor_scale)+h, xoff:xoff+w] = img
+    back_array = np.array(back)
+    del back
+    # generate mask of non-transparent image, and overlay it over background
+    mask = img[:, :, 3] != 0
+    img_mask = img[mask]
+    del img
 
-    #find parts where image is transparent and put background back over them
-    mask = result[:, :, 3] == 0
-    result[mask] = back[mask]
+    back_array[round(200*refactor_scale):round(200*refactor_scale)+h, xoff:xoff+w][mask] = img_mask
+    del mask
+    del img_mask
 
-    #crop bottom of image
-    result = result[:round(200*refactor_scale+h+100*refactor_scale)]
-
-    im = Image.fromarray(result[:, :, :3])
+    im = Image.fromarray(back_array[:, :, :3])
+    del back_array
     im.save("chart.jpeg")
+    del im
+
     await message.channel.send(file=discord.File('chart.jpeg'))
 
     if len(skipped) != 0:

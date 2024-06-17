@@ -84,7 +84,7 @@ async def bratify(message, text) -> Image:
             await message.channel.send("Message too long, can't display properly!")
             return
 
-        arial = ImageFont.truetype("Arial Narrow.ttf", font_size)
+        arial = ImageFont.truetype("assets/arialnarrow.ttf", font_size)
 
         lines = ['']
         for word in text.split():
