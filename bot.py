@@ -72,9 +72,9 @@ async def on_message(message):
 
                 user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
                 if not win:
-                    await message.reply(content=f"Incorrect! {points}")
+                    await message.reply(content=f"Incorrect! {points}", mention_author=False)
                 else:
-                    await message.reply(content=f"Album Guess: Correct! {points}")
+                    await message.reply(content=f"Album Guess: Correct! {points}", mention_author=False)
 
                 game.pop(message.author.id)
 
