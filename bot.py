@@ -130,7 +130,7 @@ async def on_message(message):
 
         await asyncio.sleep(30)
 
-        if user_game.message != jamble_message_copy: # check if game is over already, or new game has been started
+        if message.author.id not in game or user_game.message != jamble_message_copy: # check if game is over already, or new game has been started
             return
 
         await message.channel.send(f"Time's up! Artist: {user_game.answer}")

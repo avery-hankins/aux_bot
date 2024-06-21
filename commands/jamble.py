@@ -26,7 +26,6 @@ async def jamble(message, lastfmKey) -> [discord.Message, str, discord.Member | 
         return [None, None, None]
 
     artist = rawjson['topartists']['artist'][0]['name']
-    print(artist)
 
     artist_upper = artist.upper()
 
