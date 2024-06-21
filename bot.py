@@ -35,7 +35,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
-game = dict()  # currently running games
+game: dict = dict()  # currently running games
 
 client = discord.Client(intents=intents)
 
@@ -69,11 +69,12 @@ async def on_message(message):
 
                 points = "**" + str(len(user_game.images) + int(win)) + "/4 points**"
                 await user_game.message.edit(attachments=[discord.File("art_1.png")])
+
+                user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
                 if not win:
-                    await message.channel.send(content=f"Incorrect! Album: {user_game.answer}, {points}")
+                    await message.reply(content=f"Incorrect! {points}")
                 else:
-                    await message.channel.send(content=f"Album Guess: Correct! {points}")
-                    await message.add_reaction("👍")
+                    await message.reply(content=f"Album Guess: Correct! {points}")
 
                 game.pop(message.author.id)
 
@@ -178,16 +179,19 @@ async def on_reaction_add(reaction, user):
                 await message.channel.send(f"Artist: {user_game.answer}")
                 game.pop(user.id)
                 return
-        if isinstance(user_game, AlbumGuess) and user_game.match_hint(message) and user_game.match(user=user):
-            if reaction.emoji == "😞":
-                user_game.final_image.save("art_1.png")
+        if isinstance(user_game, AlbumGuess) and user_game.match(user=user):
+            if reaction.emoji != "😞":
+                return  # early return
 
-                points = "**0/4 points**"
-                await user_game.message.edit(attachments=[discord.File("art_1.png")])
+            user_game.final_image.save("art_1.png")
 
-                await message.channel.send(f"{user.mention} gave up.")
-                await message.channel.send(f"Album: {user_game.answer}, {points}")
-                game.pop(user.id)
-                return
+            points = "**0/4 points**"
+            await user_game.message.edit(attachments=[discord.File("art_1.png")])
+
+            await message.channel.send(f"{user.mention} gave up. {points}")
+            user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
+            game.pop(user.id)
+            return
+
 
 client.run(token)
