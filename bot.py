@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import user_functions
 import asyncio
+import sqlite3
 
 load_dotenv()
 token = os.getenv('TOKEN')
@@ -37,10 +38,42 @@ intents.members = True
 
 game: dict = dict()  # currently running games
 
+db: sqlite3.Connection = None
+
 client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
+    # Set up database
+    # TODO move to new function, better figure out setup?
+    global db
+    db = sqlite3.connect('database.db')
+    cursor = db.cursor()
+
+    sql_statements = [
+        """CREATE TABLE IF NOT EXISTS scores (
+                user_id INTEGER NOT NULL,
+                server_id INTEGER NOT NULL,
+                sb_stars INTEGER NOT NULL DEFAULT 0,
+                sb_messages INTEGER NOT NULL DEFAULT 0,
+                ag_points INTEGER NOT NULL DEFAULT 0,
+                ag_won_games INTEGER NOT NULL DEFAULT 0,
+                ag_total_games INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (user_id, server_id)
+        );""",
+        """CREATE TABLE IF NOT EXISTS lastfm_users (
+                user_id INTEGER NOT NULL PRIMARY KEY,
+                lastfm_username TEXT NOT NULL
+        );"""]
+
+    #sql_statements = ["CREATE DATABASE IF NOT EXISTS servers;", "SHOW DATABASES"]
+
+    for statement in sql_statements:
+        cursor.execute(statement)
+
+    db.commit()
+    cursor.close()
+
     print(f'We have logged in as {client.user}')
     await client.change_presence(activity=discord.Game(name="!help for help"))
 
@@ -52,7 +85,7 @@ async def on_message(message):
         return
 
     if str(message.author.id) == author:
-        await user_functions.function(client, message)
+        await user_functions.function(client, message, game)
 
     if message.author.id in game and game[message.author.id].same_channel(message):
         user_game = game[message.author.id]
@@ -67,15 +100,17 @@ async def on_message(message):
             if user_game.end:
                 user_game.final_image.save("art_1.png")
 
-                points = "**" + str(len(user_game.images) + int(win)) + "/4 points**"
+                points = len(user_game.images) + int(win)
+                point_string = "**" + str(points) + "/4 points**"
                 await user_game.message.edit(attachments=[discord.File("art_1.png")])
 
                 user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
                 if not win:
-                    await message.reply(content=f"Incorrect! {points}", mention_author=False)
+                    await message.reply(content=f"Incorrect! {point_string}", mention_author=False)
                 else:
-                    await message.reply(content=f"Album Guess: Correct! {points}", mention_author=False)
+                    await message.reply(content=f"Album Guess: Correct! {point_string}", mention_author=False)
 
+                db_add_game(message.author.id, points, db)  # TODO fix namespace so it's clear this is ag
                 game.pop(message.author.id)
 
                 return
@@ -84,10 +119,7 @@ async def on_message(message):
 
 
     if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
-        game[message.author.id] = AlbumGuess(*(await albumguess(message, lastfmKey)))
-
-        if game[message.author.id].message is None:
-            return
+        game[message.author.id] = AlbumGuess(*(await albumguess(message, lastfmKey, db)))
 
         return
 
@@ -190,6 +222,7 @@ async def on_reaction_add(reaction, user):
 
             await message.channel.send(f"{user.mention} gave up. {points}")
             user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
+            db_add_game(user.id, 0, db)
             game.pop(user.id)
             return
 

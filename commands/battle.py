@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 import random
 import discord
 import io
-import commands.chart_utils as chart_utils
+import chart_utils
 
 headers = {'Accept': 'application/json'}
 

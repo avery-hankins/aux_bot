@@ -2,6 +2,7 @@ import numpy as np
 import requests
 import random
 from PIL import Image
+import sqlite3
 
 from commands.connect import find_user
 from games import *
@@ -9,8 +10,12 @@ from games import *
 headers = {'Accept': 'application/json'}
 
 
-async def albumguess(message, lastfmKey) -> [discord.Message, str, discord.Member | discord.User, [Image], Image, discord.Message]:
+async def albumguess(message: discord.Message, lastfmKey: str, db: sqlite3.Connection) -> [discord.Message, str, discord.Member | discord.User, [Image], Image, discord.Message]:
     args = message.content.split()[1:]
+
+    if len(args) > 0 and args[0] == "leaderboard":
+        await leaderboard(message, db)
+        return [None, None, None, None, None, None]
 
     user = find_user(message.author.id)
 
@@ -105,6 +110,74 @@ def reformat_hint(hint_text: str, message: discord.Message, game: AlbumGuess) ->
     hint_text = hint_text.replace("_", "\_")  # reformat for discord
     return hint_text
 
+async def leaderboard(message: discord.Message, db: sqlite3.Connection):
+    embed_var = discord.Embed(title="Album Guess Leaderboard", color=0x00ff00)
+    #embed_var.add_field(name="",value="MostlikelyHuman - 9999999", inline=False)
+    #displayed_users = ""
+
+    cursor = db.cursor()
+
+    #db_leaderboard = cursor.execute("SELECT user_id, ag_points FROM scores WHERE ag_points > 0 ORDER BY ag_points DESC")
+    db_leaderboard = cursor.execute("SELECT user_id, ag_points FROM scores ORDER BY ag_points DESC LIMIT 15;")
+
+    value_em = ""
+    author_index = 0
+    user_count = 1
+    for row in db_leaderboard:
+        user = await message.guild.fetch_member(int(row[0]))
+        user_name = user.display_name
+        points = int(row[1])
+
+        if message.author.id == int(row[0]):
+            user_points = "**" + str(user_count) + ". " + user_name + " - " + str(points) + " points" + "\n**"
+            author_index = user_count
+        else:
+            user_points = str(user_count) + ". " + user_name + " - **" + str(points) + "** points" + "\n"
+        value_em += user_points
+        user_count += 1
+
+    embed_var.add_field(name="", value=value_em, inline=False)
+
+    if author_index != 0:
+        embed_var.set_footer(text="You are #" + str(author_index) + "/" + str(user_count-1))
+
+    await message.channel.send(embed=embed_var)
+
+    return
+
+    with open("ag_db.csv", "r") as f:
+        lines = f.readlines()
+        lines = [line.split(",") for line in lines]
+        for line in lines:
+            try:
+                user = await message.guild.fetch_member(int(line[0]))
+
+                displayed_users += user.name + " - " + line[1] + "\n"
+            except discord.NotFound:
+                pass
+
+    embed_var.add_field(name="",value=displayed_users, inline=False)
+    await message.channel.send(embed=embed_var)
+
+
+def db_add_game(user_id: int, points: int, db: sqlite3.Connection):
+    cursor = db.cursor()
+
+    init_statement = "INSERT or IGNORE INTO scores(user_id, server_id) VALUES (?, 0);"
+    cursor.execute(init_statement, (user_id,))
+
+    update_statement = "UPDATE scores SET ag_points = ag_points + ? WHERE user_id = ? AND server_id = 0;"
+    cursor.execute(update_statement, (points, user_id))
+
+    update_statement = "UPDATE scores SET ag_total_games = ag_total_games + 1 WHERE user_id = ? AND server_id = 0;"
+    cursor.execute(update_statement, (user_id,))
+
+    if points != 0:
+        update_statement = "UPDATE scores SET ag_won_games = ag_won_games + 1 WHERE user_id = ? AND server_id = 0;"
+        cursor.execute(update_statement, (user_id,))
+
+    db.commit()
+    cursor.close()
 
 def pixelate(image_path, pixelation_amount):  # taken from https://medium.com/@charlietapsell1989/python-pixelation-6fc490307a05
     # open image

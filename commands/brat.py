@@ -1,7 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import discord
 import requests
-import commands.chart_utils as chart_utils
+import chart_utils
 from commands.connect import find_user
 
 
