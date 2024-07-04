@@ -10,11 +10,11 @@ from games import *
 headers = {'Accept': 'application/json'}
 
 
-async def albumguess(message: discord.Message, lastfmKey: str, db: sqlite3.Connection) -> [discord.Message, str, discord.Member | discord.User, [Image], Image, discord.Message]:
+async def albumguess(message: discord.Message, lastfmKey: str, client: discord.Client, db: sqlite3.Connection) -> [discord.Message, str, discord.Member | discord.User, [Image], Image, discord.Message]:
     args = message.content.split()[1:]
 
     if len(args) > 0 and args[0] == "leaderboard":
-        await leaderboard(message, db)
+        await leaderboard(message, client, db)
         return [None, None, None, None, None, None]
 
     user = find_user(message.author.id)
@@ -110,7 +110,7 @@ def reformat_hint(hint_text: str, message: discord.Message, game: AlbumGuess) ->
     hint_text = hint_text.replace("_", "\_")  # reformat for discord
     return hint_text
 
-async def leaderboard(message: discord.Message, db: sqlite3.Connection):
+async def leaderboard(message: discord.Message, client: discord.Client, db: sqlite3.Connection):
     embed_var = discord.Embed(title="Album Guess Leaderboard", color=0x00ff00)
     #embed_var.add_field(name="",value="MostlikelyHuman - 9999999", inline=False)
     #displayed_users = ""
@@ -124,7 +124,7 @@ async def leaderboard(message: discord.Message, db: sqlite3.Connection):
     author_index = 0
     user_count = 1
     for row in db_leaderboard:
-        user = await message.guild.fetch_member(int(row[0]))
+        user = await client.fetch_user(int(row[0]))
         user_name = user.display_name
         points = int(row[1])
 

@@ -119,7 +119,7 @@ async def on_message(message):
 
 
     if message.content.startswith('!album') or message.content.startswith('!albumguess') or message.content.startswith('!ag'):
-        game[message.author.id] = AlbumGuess(*(await albumguess(message, lastfmKey, db)))
+        game[message.author.id] = AlbumGuess(*(await albumguess(message, lastfmKey, client, db)))
 
         return
 
