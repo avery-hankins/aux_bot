@@ -138,8 +138,8 @@ async def on_message(message):
         embedVar.add_field(name="!help", value="This command.", inline=False)
         embedVar.add_field(name="!meeting", value="View previous meetings, or get chart information about a specific one.", inline=False)
         embedVar.add_field(name="!moneyspread", value="DRANKDRANKDRANKDRANK", inline=False)
-        embedVar.add_field(name="!rymalbum", value="Display some basic information about an album, through RYM's database.", inline=False)
-        embedVar.add_field(name="!rymchart", value="Show the top albums from a given year, according to RYM", inline = False)
+        # embedVar.add_field(name="!rymalbum", value="Display some basic information about an album, through RYM's database.", inline=False)  # sonemic no api moment :(
+        # embedVar.add_field(name="!rymchart", value="Show the top albums from a given year, according to RYM", inline = False)
         embedVar.add_field(name="!sblb", value="Shows the users with the most Starboard stars (or number of messages pinned with \"!sblb messages)\"", inline=False)
         await message.channel.send(embed=embedVar)
         return
@@ -183,11 +183,13 @@ async def on_message(message):
         return
 
     if message.content.startswith('!rymalbum'):
-        await rymalbum(message)
+        await message.channel.send("Due to changes to the RateYourMusic website, this command is disabled for the foreseeable future.")
+        # await rymalbum(message)
         return
 
     if message.content.startswith('!rymchart'):
-        await rymchart(message)
+        await message.channel.send("Due to changes to the RateYourMusic website, this command is disabled for the foreseeable future.")
+        # await rymchart(message)
         return
 
     if message.content.startswith('!sbrefresh') and message.author.id == int(author):
