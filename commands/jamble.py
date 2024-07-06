@@ -38,8 +38,14 @@ async def jamble(message, lastfmKey) -> [discord.Message, str, discord.Member | 
 
     return [sent, artist, message.author]
 
-async def jamble_continue(message, artist) -> bool:
+
+async def jamble_continue(message: discord.Message, client: discord.Client, artist: str) -> bool:
     if message.content.upper() == artist.upper():
+        try:
+            await message.remove_reaction("👎", client.user)
+        except discord.NotFound:
+            pass
+
         await message.add_reaction("👍")
         await message.channel.send("Jamble: Correct!")
         return True

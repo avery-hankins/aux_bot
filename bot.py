@@ -90,7 +90,7 @@ async def on_message(message):
     if message.author.id in game and game[message.author.id].same_channel(message):
         user_game = game[message.author.id]
         if isinstance(user_game, Jamble):
-            done = await jamble_continue(message, user_game.answer)
+            done = await jamble_continue(message, client, user_game.answer)
             if done: game.pop(message.author.id)
 
             return
@@ -231,6 +231,39 @@ async def on_reaction_add(reaction, user):
             user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
             db_add_game(user.id, 0, db)
             game.pop(user.id)
+            return
+
+@client.event
+async def on_message_edit(before: discord.Message, after: discord.Message):
+    message = after
+
+    if message.author.id in game and game[message.author.id].same_channel(message):
+        user_game = game[message.author.id]
+        if isinstance(user_game, Jamble):
+            done = await jamble_continue(message, client, user_game.answer)
+            if done: game.pop(message.author.id)
+
+            return
+        if isinstance(user_game, AlbumGuess):
+            user_game.end, win = await albumguess_continue(message, user_game)
+
+            if user_game.end:
+                user_game.final_image.save("art_1.png")
+
+                points = len(user_game.images) + int(win)
+                point_string = "**" + str(points) + "/4 points**"
+                await user_game.message.edit(attachments=[discord.File("art_1.png")])
+
+                user_game.hint_message = await user_game.hint_message.edit(content=f"{user_game.answer}")
+                if not win:
+                    await message.reply(content=f"Incorrect! {point_string}", mention_author=False)
+                else:
+                    await message.reply(content=f"Album Guess: Correct! {point_string}", mention_author=False)
+
+                db_add_game(message.author.id, points, db)  # TODO fix namespace so it's clear this is ag
+                game.pop(message.author.id)
+
+                return
             return
 
 
