@@ -137,6 +137,7 @@ async def leaderboard(message: discord.Message, client: discord.Client, db: sqli
         value_em += user_points
         user_count += 1
 
+    cursor.close()
     embed_var.add_field(name="", value=value_em, inline=False)
 
     if author_index != 0:

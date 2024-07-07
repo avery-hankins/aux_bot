@@ -1,5 +1,30 @@
 import discord
+import sqlite3
 
+async def stats(message: discord.Message, client: discord.Client, db: sqlite3.Connection):
+    cursor = db.cursor()
+
+    cursor.execute("SELECT ag_total_games FROM scores WHERE user_id = ? AND server_id = 0", (message.author.id,))
+    ag_total_games = int(cursor.fetchone()[0])
+    cursor.execute("SELECT ag_won_games FROM scores WHERE user_id = ? AND server_id = 0", (message.author.id,))
+    ag_won_games = int(cursor.fetchone()[0])
+    cursor.execute("SELECT ag_points FROM scores WHERE user_id = ? AND server_id = 0", (message.author.id,))
+    ag_points = int(cursor.fetchone()[0])
+
+    cursor.close()
+
+    average_points = ag_points / (ag_total_games * 1.0)
+    win_rate = (ag_won_games / (ag_total_games * 1.0)) * 100.0
+
+    embed_text = (f"- Total Points: {ag_points}\n- Total Games: {ag_total_games}\n- Average Points/Game: {average_points:.2f}"
+                  f"\n- Games Won: {ag_won_games}\n- Win Rate: {win_rate:.1f}%")
+
+    embed_var = discord.Embed(title=f"{message.author.display_name}'s Game Stats", color=0x00ff00)
+    embed_var.add_field(name="Album Guess:", value=embed_text, inline=False)
+
+    embed_var.set_thumbnail(url=message.author.display_avatar.url)
+
+    await message.channel.send(embed=embed_var)
 
 class Game:
     def __init__(self, message: discord.message = None, answer: str = None,

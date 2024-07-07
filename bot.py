@@ -205,6 +205,10 @@ async def on_message(message):
         await sbleaderboard(message, client, starboard_bot, threshold)
         return
 
+    if message.content.startswith("!stats"):
+        await stats(message, client, db)
+        return
+
 
 @client.event
 async def on_reaction_add(reaction, user):
