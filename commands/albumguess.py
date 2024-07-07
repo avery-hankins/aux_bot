@@ -117,8 +117,8 @@ async def leaderboard(message: discord.Message, client: discord.Client, db: sqli
 
     cursor = db.cursor()
 
-    #db_leaderboard = cursor.execute("SELECT user_id, ag_points FROM scores WHERE ag_points > 0 ORDER BY ag_points DESC")
-    db_leaderboard = cursor.execute("SELECT user_id, ag_points FROM scores ORDER BY ag_points DESC LIMIT 15;")
+    db_leaderboard = cursor.execute("SELECT user_id, ag_points, ag_total_games FROM scores WHERE ag_points > 0 ORDER BY ag_points DESC LIMIT 15;")
+    #db_leaderboard = cursor.execute("SELECT user_id, ag_points FROM scores ORDER BY ag_points DESC LIMIT 15;")
 
     value_em = ""
     author_index = 0
@@ -127,12 +127,13 @@ async def leaderboard(message: discord.Message, client: discord.Client, db: sqli
         user = await client.fetch_user(int(row[0]))
         user_name = user.display_name
         points = int(row[1])
+        total_games = int(row[2])
 
         if message.author.id == int(row[0]):
-            user_points = "**" + str(user_count) + ". " + user_name + " - " + str(points) + " points" + "\n**"
+            user_points = "**" + str(user_count) + ". " + user_name + " - " + str(points) + " points / " + str(total_games) + " games\n**"
             author_index = user_count
         else:
-            user_points = str(user_count) + ". " + user_name + " - **" + str(points) + "** points" + "\n"
+            user_points = str(user_count) + ". " + user_name + " - **" + str(points) + "** points / **" + str(total_games) + "** games\n"
         value_em += user_points
         user_count += 1
 
