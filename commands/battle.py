@@ -81,7 +81,7 @@ async def battle(message, lastfmKey):
                 blank_album = Image.fromarray(blank_album)
                 cv_draw = ImageDraw.Draw(blank_album)
 
-                font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New Bold.ttf", 20)
+                font = ImageFont.truetype("assets/Courier New Bold.ttf", 20)
 
                 draw_album = album['name']
                 cv_draw.text((0,0), draw_album[:min(13,len(draw_album))], font=font, fill=(255,0,0))
@@ -90,7 +90,7 @@ async def battle(message, lastfmKey):
                         draw_album = draw_album[0:23] + "..."
                     cv_draw.text((0,15), draw_album[13:], font=font, fill=(255,0,0))
 
-                font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Courier New.ttf", 20)
+                font = ImageFont.truetype("assets/Courier New.ttf", 20)
 
                 draw_artist = album['artist']['name']
                 cv_draw.text((0,50), draw_artist[:min(13,len(draw_artist))], font=font, fill=(255,0,0))
