@@ -9,7 +9,19 @@ async def brat(message, lastfmKey):
     args = message.content.split()[1:]
 
     if len(args) == 0:
-        await message.channel.send("Usage: !brat [text], or !brat -chart")
+        if message.reference is None:
+            await message.channel.send("Usage: !brat [text], or !brat -chart")
+            return
+
+        reference = message.reference.resolved
+
+        if type(reference) is discord.Message:
+            content = reference.content
+
+            im = await bratify(message, content)
+            im.save("brat.png", "PNG")
+            await message.channel.send(file=discord.File("brat.png"))
+
         return
 
     if args[0] == "-chart" or args[0] == "-c":
@@ -111,6 +123,4 @@ async def bratify(message, text) -> Image:
     draw.text(((W-w)/2,(H-h)/2), text, fill="black", font=arial, align="center")
 
     im = im.filter(ImageFilter.GaussianBlur(radius=2))
-    #im.save("brat.png", "PNG")
-    #await message.channel.send(file=discord.File("brat.png"))
     return im
