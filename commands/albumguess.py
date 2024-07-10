@@ -26,14 +26,35 @@ async def albumguess(message: discord.Message, lastfmKey: str, client: discord.C
     num = random.randint(1, 500)
 
     r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user
-                     + '&limit=1&page=' + str(num) + '&api_key=' + lastfmKey + '&period=12month' + '&format=json', headers=headers)
+                     + '&limit=1&page=' + str(num) + '&api_key=' + lastfmKey + '&period=12month' + '&format=json',
+                     headers=headers)
     rawjson = r.json()
 
     if "message" in rawjson and rawjson['message'] == "User not found":
         await message.channel.send("UH OH")
         return [None, None, None, None, None, None]
 
-    art_link = rawjson['topalbums']['album'][0]['image'][3]['#text']
+    try:
+        art_link = rawjson['topalbums']['album'][0]['image'][3]['#text']
+    except IndexError:
+        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user
+                         + '&limit=500&page=1&api_key=' + lastfmKey + '&period=12month' + '&format=json',
+                         headers=headers)
+        rawjson = r.json()
+        length = int(rawjson['topalbums']['@attr']['total'])  # how many total albums they've listened to in past 12months
+
+        num = random.randint(1, length)
+
+        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user
+                         + '&limit=1&page=' + str(num) + '&api_key=' + lastfmKey + '&period=12month' + '&format=json',
+                         headers=headers)
+        rawjson = r.json()
+
+        if "message" in rawjson and rawjson['message'] == "User not found":
+            await message.channel.send("UH OH")
+            return [None, None, None, None, None, None]
+
+        art_link = rawjson['topalbums']['album'][0]['image'][3]['#text']
 
     if art_link == "":
         await message.channel.send("Error: no album art found for this release, please try again.")
@@ -146,20 +167,6 @@ async def leaderboard(message: discord.Message, client: discord.Client, db: sqli
     await message.channel.send(embed=embed_var)
 
     return
-
-    with open("ag_db.csv", "r") as f:
-        lines = f.readlines()
-        lines = [line.split(",") for line in lines]
-        for line in lines:
-            try:
-                user = await message.guild.fetch_member(int(line[0]))
-
-                displayed_users += user.name + " - " + line[1] + "\n"
-            except discord.NotFound:
-                pass
-
-    embed_var.add_field(name="",value=displayed_users, inline=False)
-    await message.channel.send(embed=embed_var)
 
 
 def db_add_game(user_id: int, points: int, db: sqlite3.Connection):
