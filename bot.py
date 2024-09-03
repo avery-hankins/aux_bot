@@ -27,8 +27,8 @@ from commands.brat import *
 from commands.connect import connect
 from commands.jamble import *
 from commands.meeting import meeting
-from commands.rymalbum import rymalbum
-from commands.rymchart import rymchart
+#from commands.rymalbum import rymalbum
+#from commands.rymchart import rymchart
 from commands.sbrefresh import sbrefresh
 from commands.sbleaderboard import sbleaderboard
 
