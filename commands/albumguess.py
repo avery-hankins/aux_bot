@@ -117,13 +117,13 @@ def reformat_hint(hint_text: str, message: discord.Message, game: AlbumGuess) ->
 
     hint_text = hint_text.replace("\_", "_")
 
-    message_split = [word.lower() for word in message.content.split(" ") if word]
+    message_split = [word.lower().replace("'", "’") for word in message.content.split(" ") if word]
     game_split = [word for word in game.answer.split(" ") if word]
     hint_split = [word for word in hint_text.split(" ") if word]
 
     for i in range(min(len(message_split), len(game_split))):
         for j in range(min(len(game_split[i]), len(message_split[i]))):
-            if game_split[i][j].lower() == message_split[i][j]:
+            if game_split[i][j].lower().replace("'", "’") == message_split[i][j]:
                 hint_split[i] = hint_split[i][:j] + game_split[i][j] + hint_split[i][j + 1:]
 
     hint_text = " ".join(hint_split)
@@ -200,7 +200,17 @@ def pixelate(image_path, pixelation_amount):  # taken from https://medium.com/@c
 def check_answer(game: AlbumGuess, message: discord.Message | None = None):
     # TODO more pre-processing, remove punctuation etc?
 
-    if message is not None and message.content is not None and message.content.lower() == game.answer.lower():
+    if message is None or message.content is None:
+        return False
+
+    user_guess = message.content.lower()
+    album_name = game.answer.lower()
+
+    # fix apple apostrophe
+    user_guess = user_guess.replace("'", "’")
+    album_name = album_name.replace("'", "’")
+
+    if user_guess == album_name:
         return True
     else:
         return False
