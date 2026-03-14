@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 import user_functions
 import asyncio
 import sqlite3
+from spotify_auth import get_spotify_token
 
 load_dotenv()
 token = os.getenv('TOKEN')
 lastfmKey = os.getenv('LASTFM')
-spotifyKey = os.getenv('SPOTIFY_TOKEN')
 author = os.getenv('AUTHOR')
 art = os.getenv('ART')
 gif = os.getenv('GIF')
@@ -132,7 +132,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('!coverflow'):
-        await coverflow(message, spotifyKey)
+        await coverflow(message, get_spotify_token())
         return
 
     if message.content.startswith('!help'):
@@ -182,7 +182,7 @@ async def on_message(message):
         return
 
     # if message.content.startswith('!library'):
-    #     await albums_from_user(message, spotifyKey)
+    #     await albums_from_user(message, get_spotify_token())
     #     return
 
     if message.content.startswith('!connect'):
@@ -198,7 +198,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('!playlist'):
-        await playster(message, spotifyKey, lastfmKey)
+        await playster(message, get_spotify_token(), lastfmKey)
         return
 
     if message.content.startswith('!rymalbum'):
@@ -224,7 +224,7 @@ async def on_message(message):
         return
 
     if message.content.startswith("!topster"):
-        await topster(message, lastfmKey, spotifyKey)
+        await topster(message, lastfmKey, get_spotify_token())
         return
 
 
