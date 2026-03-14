@@ -141,11 +141,13 @@ async def on_message(message):
         embedVar.add_field(name="!battle", value="Aux battle. Input the timeframe (7day, 1month, 3month, 6month, 12month, overall) and then a list of last.fm usernames. Example: !battle 7day mostlikelyhuman fm-bot", inline=False)
         embedVar.add_field(name="!brat", value="Input text to bratify, or add -chart to get a chart of your recent listening history (but if all the albums were brat).", inline=False)
         embedVar.add_field(name="!connect", value="Connect your last.fm account to your discord account, to use commands that require it.", inline=False)
+        embedVar.add_field(name="!coverflow", value="[PLAYGROUND] Display your recent albums in a coverflow-style view.", inline=False)
         embedVar.add_field(name="!donate", value="Donate to support the bot.", inline=False)
         embedVar.add_field(name="!jamble", value="You'll be given a scrambled artist name from your recent listening history, guess who it is!", inline=False)
         embedVar.add_field(name="!help", value="This command.", inline=False)
         embedVar.add_field(name="!meeting", value="View previous PVC meetings, or get chart information about a specific one.", inline=False)
         embedVar.add_field(name="!moneyspread", value="DRANKDRANKDRANKDRANK", inline=False)
+        embedVar.add_field(name="!playlist", value="[PLAYGROUND] Generate a playlist-style chart from your listening history.", inline=False)
         # embedVar.add_field(name="!rymalbum", value="Display some basic information about an album, through RYM's database.", inline=False)  # sonemic no api moment :(
         # embedVar.add_field(name="!rymchart", value="Show the top albums from a given year, according to RYM", inline = False)
         embedVar.add_field(name="!sblb", value="Shows the users with the most Starboard stars (or number of messages pinned with \"!sblb messages)\"", inline=False)
