@@ -8,6 +8,7 @@ import sqlite3
 load_dotenv()
 token = os.getenv('TOKEN')
 lastfmKey = os.getenv('LASTFM')
+spotifyKey = os.getenv('SPOTIFY_TOKEN')
 author = os.getenv('AUTHOR')
 art = os.getenv('ART')
 gif = os.getenv('GIF')
@@ -31,6 +32,7 @@ from commands.meeting import meeting
 #from commands.rymchart import rymchart
 from commands.sbrefresh import sbrefresh
 from commands.sbleaderboard import sbleaderboard
+from commands.topster import topster, playster, albums_from_user
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -83,9 +85,6 @@ async def on_message(message):
 
     if message.author == client.user:
         return
-
-    if str(message.author.id) == author:
-        await user_functions.function(client, message, game)
 
     if message.author.id in game and game[message.author.id].same_channel(message):
         user_game = game[message.author.id]
@@ -175,6 +174,10 @@ async def on_message(message):
 
         return
 
+    # if message.content.startswith('!library'):
+    #     await albums_from_user(message, spotifyKey)
+    #     return
+
     if message.content.startswith('!connect'):
         await connect(message)
         return
@@ -185,6 +188,10 @@ async def on_message(message):
 
     if message.content.startswith('!moneyspread'):
         await message.channel.send(file=discord.File(f"assets/{art}"))
+        return
+
+    if message.content.startswith('!playlist'):
+        await playster(message, spotifyKey, lastfmKey)
         return
 
     if message.content.startswith('!rymalbum'):
@@ -207,6 +214,10 @@ async def on_message(message):
 
     if message.content.startswith("!stats"):
         await stats(message, client, db)
+        return
+
+    if message.content.startswith("!topster"):
+        await topster(message, lastfmKey, spotifyKey)
         return
 
 
