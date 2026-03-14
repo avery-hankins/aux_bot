@@ -33,6 +33,7 @@ from commands.meeting import meeting
 from commands.sbrefresh import sbrefresh
 from commands.sbleaderboard import sbleaderboard
 from commands.topster import topster, playster, albums_from_user
+from commands.coverflow import coverflow
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -128,6 +129,10 @@ async def on_message(message):
 
     if message.content.startswith('!brat'):
         await brat(message, lastfmKey)
+        return
+
+    if message.content.startswith('!coverflow'):
+        await coverflow(message, spotifyKey)
         return
 
     if message.content.startswith('!help'):
