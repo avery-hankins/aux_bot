@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import math
 from commands.connect import find_user
+from commands.topster import resolve_lastfm_user, resolve_period
 
 headers = {'Accept': 'application/json'}
 
@@ -29,132 +30,143 @@ Sends:
 async def coverflow(message: discord.Message, lastfmKey: str):
     args = message.content.split(" ")[1:]
 
-    user = args[0] if len(args) > 0 else None
+    user = resolve_lastfm_user(message, args)
     if not user:
-        linked = find_user(message.author.id)
-        if linked:
-            user = linked.strip()
-        else:
-            await message.channel.send("Please specify a lastfm username or link your account with !connect.")
-            return
+        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+        return
 
-    period = args[1] if len(args) > 1 else "12month"
+    period = resolve_period(args)
     limit = 15
 
     working = await message.channel.send("Working on it!")
 
-    S = 500  # canvas size
-    cover_size = 150
-    half = cover_size // 2
-    center = S // 2
+    try:
+        S = 500  # canvas size
+        cover_size = 150
+        half = cover_size // 2
+        center = S // 2
 
-    covers = []
-    names = []
-    artists = []
+        covers = []
+        names = []
+        artists = []
 
-    r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=' + str(limit) + '&period=' + period + '&api_key=' + lastfmKey + '&format=json', headers=headers)
-    rawjson = r.json()
-    albums = rawjson['topalbums']['album']
+        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=' + str(limit) + '&period=' + period + '&api_key=' + lastfmKey + '&format=json', headers=headers)
+        rawjson = r.json()
 
-    blank = np.zeros((S, S, 4), dtype=np.uint8)
-    for album in albums:
-        name = album['name']
-        artist = album['artist']['name']
+        if 'topalbums' not in rawjson or 'album' not in rawjson['topalbums']:
+            await message.channel.send(f"Error: couldn't fetch albums for user `{user}`.")
+            await working.delete()
+            return
 
-        if len(album['image'][2]['#text']) == 0:
-            continue
+        albums = rawjson['topalbums']['album']
 
-        init_im = requests.get(album['image'][2]['#text'])
-        bytes_im = io.BytesIO(init_im.content)
-        try:
-            cv_im = Image.open(bytes_im)
-        except Exception:
-            continue
-        cv_im = cv_im.convert("RGBA")
+        blank = np.zeros((S, S, 4), dtype=np.uint8)
+        for album in albums:
+            name = album['name']
+            artist = album['artist']['name']
 
-        names.append(name)
-        artists.append(artist)
-        cv_im = cv_im.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
-        frame = blank.copy()
-        frame[center-half:center+half, center-half:center+half] = np.array(cv_im)
-        covers.append(frame)
+            if len(album['image'][2]['#text']) == 0:
+                continue
 
-    canvas = np.zeros((S, S, 4), dtype=np.uint8)
-    canvas[:, :, 3] = 255
+            init_im = requests.get(album['image'][2]['#text'])
+            bytes_im = io.BytesIO(init_im.content)
+            try:
+                cv_im = Image.open(bytes_im)
+            except Exception:
+                continue
+            cv_im = cv_im.convert("RGBA")
 
-    frames = []
-    durations = []
+            names.append(name)
+            artists.append(artist)
+            cv_im = cv_im.resize((cover_size, cover_size), Image.Resampling.LANCZOS)
+            frame = blank.copy()
+            frame[center-half:center+half, center-half:center+half] = np.array(cv_im)
+            covers.append(frame)
 
-    identity_matrix = np.array([[1, 0, 0],
-                                [0, 1, 0],
-                                [0, 0, 1]], dtype=np.float32)
+        if len(covers) < 3:
+            await message.channel.send("Not enough albums with art to generate coverflow (need at least 3).")
+            await working.delete()
+            return
 
-    c1, c2 = center - half, center + half
-    pts1 = np.float32([[c1, c1], [c2, c1], [c1, c2], [c2, c2]])
-    pts2_start = np.float32([[S-148, 208], [S-82, 160], [S-148, 293], [S-82, 340]])
-    M_start = cv2.getPerspectiveTransform(pts1, pts2_start)
-    M = cv2.getPerspectiveTransform(pts1, pts2_start)
+        canvas = np.zeros((S, S, 4), dtype=np.uint8)
+        canvas[:, :, 3] = 255
 
-    for cover in range(len(covers)):
-        prev_cover = covers[cover - 1] if cover > 0 else covers[-1]
-        prev_cover = np.flip(prev_cover, axis=1)
-        current_cover = covers[cover]
-        current_cover = np.flip(current_cover, axis=1)
-        next_cover = covers[(cover + 1) % len(covers)]
-        next_next_cover = covers[(cover + 2) % len(covers)]
+        frames = []
+        durations = []
 
-        transform_frames = 15
-        for i in range(transform_frames):
-            percent_transform = bezier(i / (1.0 * transform_frames))
-            percent_transform_r = tempered_bezier(i / (1.0 * transform_frames))
+        identity_matrix = np.array([[1, 0, 0],
+                                    [0, 1, 0],
+                                    [0, 0, 1]], dtype=np.float32)
 
-            frame_M = percent_transform_r * M + (1 - percent_transform_r) * identity_matrix
-            frame_M_start = percent_transform * identity_matrix + (1 - percent_transform) * M_start
+        c1, c2 = center - half, center + half
+        pts1 = np.float32([[c1, c1], [c2, c1], [c1, c2], [c2, c2]])
+        pts2_start = np.float32([[S-148, 208], [S-82, 160], [S-148, 293], [S-82, 340]])
+        M_start = cv2.getPerspectiveTransform(pts1, pts2_start)
+        M = cv2.getPerspectiveTransform(pts1, pts2_start)
 
-            red_square_t = cv2.warpPerspective(current_cover, frame_M, (S, S))
+        for cover in range(len(covers)):
+            prev_cover = covers[cover - 1] if cover > 0 else covers[-1]
+            prev_cover = np.flip(prev_cover, axis=1)
+            current_cover = covers[cover]
+            current_cover = np.flip(current_cover, axis=1)
+            next_cover = covers[(cover + 1) % len(covers)]
+            next_next_cover = covers[(cover + 2) % len(covers)]
+
+            transform_frames = 15
+            for i in range(transform_frames):
+                percent_transform = bezier(i / (1.0 * transform_frames))
+                percent_transform_r = tempered_bezier(i / (1.0 * transform_frames))
+
+                frame_M = percent_transform_r * M + (1 - percent_transform_r) * identity_matrix
+                frame_M_start = percent_transform * identity_matrix + (1 - percent_transform) * M_start
+
+                red_square_t = cv2.warpPerspective(current_cover, frame_M, (S, S))
+                red_square_t = np.flip(red_square_t, axis=1)
+                blue_square_t = cv2.warpPerspective(next_cover, frame_M_start, (S, S))
+
+                next_red_square = cv2.warpPerspective(next_next_cover, M_start, (S, S))
+                next_red_square = next_red_square * percent_transform_r
+
+                prev_blue_square = cv2.warpPerspective(prev_cover, M_start, (S, S))
+                prev_blue_square = np.flip(prev_blue_square, axis=1)
+
+                canvas_t = canvas.copy()
+                for layer in [prev_blue_square, red_square_t, next_red_square, blue_square_t]:
+                    m = layer[:, :, 3] != 0
+                    canvas_t[m] = layer[m]
+
+                canvas_t = canvas_t[125:400, 75:425]
+                frames.append(canvas_t)
+                durations.append(50)
+
+            red_square_t = cv2.warpPerspective(current_cover, M, (S, S))
             red_square_t = np.flip(red_square_t, axis=1)
-            blue_square_t = cv2.warpPerspective(next_cover, frame_M_start, (S, S))
+            blue_square_t = cv2.warpPerspective(next_cover, identity_matrix, (S, S))
+            next_red_square = cv2.warpPerspective(next_next_cover, M, (S, S))
 
-            next_red_square = cv2.warpPerspective(next_next_cover, M_start, (S, S))
-            next_red_square = next_red_square * percent_transform_r
+            canvas_final = canvas.copy()
+            for layer, m in [(red_square_t, red_square_t[:, :, 3] != 0),
+                             (blue_square_t, blue_square_t[:, :, 3] != 0),
+                             (next_red_square, next_red_square[:, :, 3] != 0)]:
+                canvas_final[m] = layer[m]
 
-            prev_blue_square = cv2.warpPerspective(prev_cover, M_start, (S, S))
-            prev_blue_square = np.flip(prev_blue_square, axis=1)
+            canvas_final = Image.fromarray(canvas_final)
+            still_text = ImageDraw.Draw(canvas_final)
+            text_cover = cover + 1 if cover < len(covers) - 1 else 0
+            still_text.text((S//2, 360), names[text_cover], font=ImageFont.truetype("assets/Andale Mono.ttf", 15), fill=(255,255,255), anchor="mm")
+            still_text.text((S//2, 380), artists[text_cover], font=ImageFont.truetype("assets/Andale Mono.ttf", 15), fill=(255,255,255), anchor="mm")
+            canvas_final = np.array(canvas_final)
+            canvas_final = canvas_final[125:400, 75:425]
 
-            canvas_t = canvas.copy()
-            for layer in [prev_blue_square, red_square_t, next_red_square, blue_square_t]:
-                m = layer[:, :, 3] != 0
-                canvas_t[m] = layer[m]
+            frames.append(canvas_final)
+            durations.append(1500)
 
-            canvas_t = canvas_t[125:400, 75:425]
-            frames.append(canvas_t)
-            durations.append(50)
-
-        red_square_t = cv2.warpPerspective(current_cover, M, (S, S))
-        red_square_t = np.flip(red_square_t, axis=1)
-        blue_square_t = cv2.warpPerspective(next_cover, identity_matrix, (S, S))
-        next_red_square = cv2.warpPerspective(next_next_cover, M, (S, S))
-
-        canvas_final = canvas.copy()
-        for layer, m in [(red_square_t, red_square_t[:, :, 3] != 0),
-                         (blue_square_t, blue_square_t[:, :, 3] != 0),
-                         (next_red_square, next_red_square[:, :, 3] != 0)]:
-            canvas_final[m] = layer[m]
-
-        canvas_final = Image.fromarray(canvas_final)
-        still_text = ImageDraw.Draw(canvas_final)
-        text_cover = cover + 1 if cover < len(covers) - 1 else 0
-        still_text.text((S//2, 360), names[text_cover], font=ImageFont.truetype("assets/Andale Mono.ttf", 15), fill=(255,255,255), anchor="mm")
-        still_text.text((S//2, 380), artists[text_cover], font=ImageFont.truetype("assets/Andale Mono.ttf", 15), fill=(255,255,255), anchor="mm")
-        canvas_final = np.array(canvas_final)
-        canvas_final = canvas_final[125:400, 75:425]
-
-        frames.append(canvas_final)
-        durations.append(1500)
-
-    imageio.mimsave('chart.gif', frames, loop=0, duration=durations)
-    await message.channel.send(file=discord.File('chart.gif'))
-    await working.delete()
+        imageio.mimsave('chart.gif', frames, loop=0, duration=durations)
+        await message.channel.send(file=discord.File('chart.gif'))
+    except Exception as e:
+        await message.channel.send(f"Error generating coverflow: {e}")
+    finally:
+        await working.delete()
 
 def bezier(input):
     return input * input * (3.0 - 2.0 * input)
