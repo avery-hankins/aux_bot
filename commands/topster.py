@@ -54,241 +54,95 @@ async def topster(message, lastfmKey):
     album_size = 170
     vert_offset = 32
     hor_offset = 32
-
     pad = 100
 
-    h = (album_size + vert_offset) * limit + 2 * pad
-    w = (album_size + hor_offset) * limit + 2 * pad
-    image = np.zeros((h, w, 4), dtype = np.uint8)
-    image2 = image.copy()
+    # download all album covers once
+    album_images = []
+    for i in range(len(topalbums)):
+        album = topalbums[i]
+        if album is None or 'image' not in album or album['image'][2]['#text'] == "":
+            continue
 
-    # add blank square to center of image
-    #image[int(h/2) - 2*album_size:int(h/2) + 2*album_size, int(w/2) - 2*album_size:int(w/2) + 2*album_size] = (0, 255, 0, 100)
-    skipped_albums = 0
+        print(f"Downloading {i+1}/{len(topalbums)}: {album['name']}")
+        init_im = requests.get(album['image'][2]['#text'])
+        bytes_im = io.BytesIO(init_im.content)
+        try:
+            cv_im = Image.open(bytes_im)
+        except PIL.UnidentifiedImageError:
+            print(f"  Skipped (bad image): {album['name']}")
+            continue
+        cv_im = cv_im.convert("RGBA")
 
-    albums = [None] * total_limit
-    # multi-threaded to get all album covers first
-    def place_album(x):
-        index = x
-        r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=1&page=' + str(index + 1) + '&period=' + period +'&api_key=' + lastfmKey + '&format=json', headers=headers)
-        # limit 50 per page and actually pull (x) / 1000 pages
+        scale = 0.8 * (1 - (i / max(total_limit - 1, 1))) + 0.6
+        cv_im = cv_im.resize((int(cv_im.size[0] * scale), int(cv_im.size[1] * scale)))
+        album_images.append(cv_im)
 
-        rawjson = r.json()
-        msg = rawjson['topalbums']['album']
+    await message.channel.send(f"Downloaded {len(album_images)} album covers, placing...")
 
-        if len(msg) == 0:
-            return
-
-        album = msg[0]
-        print(index)
-        print(album['name'])
-
-        if len(album['image'][2]['#text']) > 0:
-            init_im = requests.get(album['image'][2]['#text'])
-            bytes_im = io.BytesIO(init_im.content)
-            try:
-                cv_im = Image.open(bytes_im)
-            except PIL.UnidentifiedImageError:
-                return
-            cv_im = cv_im.convert("RGBA")
-        else:
-            return
-
-        albums[x] = [album, cv_im]
-
-    threads = [None] * 144
-    # TODO too many threads causes issue
-
-    # initialize threads
-    # for i in range(min(len(threads), total_limit)):
-    #     threads[i] = Thread(target=place_album, args=(i,))
-    #     threads[i].start()
-    #     print('Waiting for thread ' + str(i) + ' to finish...')
-    #
-    # album_count = 0
-    # thread_index = 0
-    # while album_count < total_limit:
-    #     thread_index = thread_index % len(threads)
-    #
-    #     if not threads[thread_index].is_alive():
-    #         threads[thread_index] = Thread(target=place_album, args=(album_count,))
-    #         threads[thread_index].start()
-    #         album_count += 1
-    #
-    #     thread_index += 1
-
-
-    # create collage
-    while True:
-        await message.channel.send("New iteratioN! " + str(vert_offset))
+    # create collage, retry with increasing spacing
+    max_attempts = 5
+    for attempt_num in range(max_attempts):
+        await message.channel.send(f"Attempt {attempt_num + 1}/{max_attempts} (offset: {vert_offset})")
         vert_offset += 3
         hor_offset += 3
 
         h = (album_size + vert_offset) * limit + 2 * pad
         w = (album_size + hor_offset) * limit + 2 * pad
-        image = np.zeros((h, w, 4), dtype = np.uint8)
+        image = np.zeros((h, w, 4), dtype=np.uint8)
 
-        # add blank square to center of image
-        #image[int(h/2) - 2*album_size:int(h/2) + 2*album_size, int(w/2) - 2*album_size:int(w/2) + 2*album_size] = (0, 255, 0, 100)
         skipped_albums = 0
 
-        for i in range(len(topalbums) - 1):
-            if skipped_albums > 0:
-                break
-
-            if topalbums[i] is None:
-                await message.channel.send("Skipped album " + str(i))
-                continue
-
-            album_name = topalbums[i]['name']
-            print(album_name)
-
-
-            if 'image' not in topalbums[i]:
-                await message.channel.send("Skipped album " + album_name)
-                continue
-
-            if topalbums[i]['image'][2]['#text'] == "":
-                await message.channel.send("Skipped album " + album_name)
-                continue
-
-            init_im = requests.get(topalbums[i]['image'][2]['#text'])
-
-            bytes_im = io.BytesIO(init_im.content)
-            try:
-                cv_im = Image.open(bytes_im)
-            except PIL.UnidentifiedImageError:
-                return
-
-            cv_im = cv_im.convert("RGBA")
-
-            # map 0 - total_limit to 1.4 - 0.6
-            scale = 0.8 * (1 - (i / (total_limit - 1))) + 0.6
-            #scale = abs(np.random.normal(0.8, 0.2))
-            #cv_im = rescale(cv_im, scale)
-            cv_im = cv_im.resize((int(cv_im.size[0] * scale), int(cv_im.size[1] * scale)))
-            cv_im2 = cv_im.copy()
+        for cv_im in album_images:
             rotate_angle = random.randint(-5, 5)
-            rotate_angle = random.randint(-5, 5)
-            cv_im = cv_im.rotate(rotate_angle - 5, expand=True)
-            cv_im2 = cv_im2.rotate(-rotate_angle + 5, expand=True)
+            cv_im_r = cv_im.rotate(rotate_angle, expand=True)
 
-            np_im = np.array(cv_im)
-            np_im2 = np.array(cv_im2)
+            np_im = np.array(cv_im_r)
             size = np_im.shape[0]
-            print(np_im.shape)
-            print(album_size)
 
-            dif = int((size - album_size) / 2)
-
-            #add non-alpha to image
             mask = np_im[:, :, 3] != 0
             img_mask = np_im[mask]
 
-            mask2 = np_im2[:, :, 3] != 0
-            img_mask2 = np_im2[mask2]
-
-            # try 5 times for best placement
-
+            placed = False
             for attempt in range(100):
-                print("Attempt " + str(attempt))
-                #random placement
                 x = random.randint(pad, image.shape[0] - pad - size)
                 y = random.randint(pad, image.shape[1] - pad - size)
 
                 region = image[x:x+size, y:y+size][mask]
-                region2 = image2[x:x+size, y:y+size][mask]
-
-                # count non-transparent pixels in region
-                sum = np.count_nonzero(region[:, 3] > 0)
-                print(sum)
-                if sum > 3500:
+                overlap = np.count_nonzero(region[:, 3] > 0)
+                if overlap > 3500:
                     continue
-                else:
-                    image[x:x+size, y:y+size][mask] = img_mask
-                    image2[x:x+size, y:y+size][mask2] = img_mask2
-                    skipped_albums -= 1
-                    break
 
-            skipped_albums += 1
+                image[x:x+size, y:y+size][mask] = img_mask
+                placed = True
+                break
 
-            #image[i * (album_size + vert_offset) + pad:i * (album_size + vert_offset) + pad + size, j * (album_size + hor_offset) + pad:j * (album_size + hor_offset) + pad + size][mask] = img_mask
+            if not placed:
+                print(f"  Could not place album {album_images.index(cv_im)}")
+                skipped_albums += 1
+                break
+            else:
+                print(f"  Placed album {album_images.index(cv_im)} in {attempt+1} attempts")
 
         if skipped_albums == 0:
             break
-
-
-        # userColumn = np.vstack(columns)
-        # image.append(userColumn)
-        # image.append(np.zeros((174 * limit + 16 * limit, 32, 4), dtype = np.uint8))
+    else:
+        await message.channel.send(f"Couldn't place all albums after {max_attempts} attempts, sending best result.")
 
     # lay background image
-
-    # load background image
     back_small = Image.open(f"assets/topster_bg.jpeg")
     back_small = back_small.convert("RGBA")
     back_small = back_small.resize((image.shape[1], image.shape[0]), Image.Resampling.LANCZOS)
     canvas = np.array(back_small)
-    canvas2 = np.array(back_small)
-    #canvas = np.ones((image.shape[0], image.shape[1], 4), dtype=np.uint8) * 255
 
-    mask = image[:, :, 3] > 125 # mostly visible
-    img_mask = image[mask]
-    mask2 = image2[:, :, 3] > 125 # mostly visible
-    img_mask2 = image2[mask2]
-    print(img_mask.shape)
-    canvas[0:image.shape[0], 0:image.shape[1]][mask] = img_mask
-    canvas2[0:image2.shape[0], 0:image2.shape[1]][mask2] = img_mask2
+    mask = image[:, :, 3] > 125
+    canvas[0:image.shape[0], 0:image.shape[1]][mask] = image[mask]
 
+    im = Image.fromarray(canvas)
+    im.save("chart.png")
 
-    # put nettspend in middle of canvas
-    # nettspend = Image.open(f"assets/nettspend_trace.png")
-    # nettspend = nettspend.convert("RGBA")
-    # nettspend = nettspend.resize((int(3*album_size), int(3*album_size)), Image.Resampling.LANCZOS)
-    # canvas[int(h/2) - int(1.5 * album_size):int(h/2) + int(1.5 * album_size), int(w/2) - int(1.5 * album_size):int(w/2) + int(1.5 * album_size)] = np.array(nettspend)
-
-    # add user pfp to canvas
-    r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.getinfo&user=' + user + '&api_key=' + lastfmKey + '&format=json', headers=headers)
-    rawjson = r.json()
-    pfp = rawjson['user']['image'][2]['#text']
-    # if len(pfp) != 0:
-    #     init_pfp = requests.get(pfp)
-    #     bytes_pfp = io.BytesIO(init_pfp.content)
-    #     cv_pfp = Image.open(bytes_pfp)
-    #     cv_pfp = cv_pfp.convert("RGBA")
-    #     cv_pfp = cv_pfp.resize((int(2*album_size), int(2*album_size)), Image.Resampling.LANCZOS)
-    #     canvas[int(h/2) - int(album_size):int(h/2) + int(album_size), int(w/2) - int(album_size):int(w/2) + int(album_size)] = np.array(cv_pfp)
-
-    #im = Image.fromarray(canvas)
-    #im2 = Image.fromarray(canvas2)
-
-    frames = [canvas, canvas2]
-
-    #im.save("chart.png")
-    imageio.mimsave('chart.gif', frames, loop=0, duration=1)
-
-    await message.channel.send(file=discord.File('chart.gif'))
+    await message.channel.send(file=discord.File('chart.png'))
     await message.channel.send(f"Skipped {skipped_albums}/{total_limit} albums")
     await working.delete()
-
-def rescale(img, factor):
-    factor = min(factor, 1)
-    width = int(img.size[0] * (1 / factor))
-    height = int(img.size[1] * (1 / factor))
-    canvas = np.zeros((height, width, 4), dtype=np.uint8)
-
-    img_arr = np.array(img)
-
-    # put img in center of canvas
-    start_width = int((width - img_arr.shape[1]) / 2)
-    start_height = int((height - img_arr.shape[0]) / 2)
-
-    canvas[start_height:start_height + img_arr.shape[0], start_width:start_width + img_arr.shape[1]] = img_arr
-
-    img_io = Image.fromarray(canvas)
-    img_io = img_io.resize(img.size, Image.Resampling.LANCZOS)
-
-    return img_io
 
 async def orbit_topster(message, lastfmKey):
     args = message.content.split(" ")[1:]  # includes "-orbit"
