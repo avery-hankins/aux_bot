@@ -353,7 +353,11 @@ async def orbit_topster(message, lastfmKey):
 
         init_im = requests.get(album['image'][2]['#text'])
         bytes_im = io.BytesIO(init_im.content)
-        cv_im = Image.open(bytes_im)
+        try:
+            cv_im = Image.open(bytes_im)
+        except PIL.UnidentifiedImageError:
+            i += 1
+            continue
         cv_im = cv_im.convert("RGBA")
         cv_im = cv_im.resize((album_size, album_size), Image.Resampling.LANCZOS)
         if name not in albumnames:

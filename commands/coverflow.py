@@ -67,13 +67,16 @@ async def coverflow(message: discord.Message, lastfmKey: str):
             await message.channel.send("Skipped album " + name)
             continue
 
-        names.append(name)
-        artists.append(artist)
-
         init_im = requests.get(album['image'][2]['#text'])
         bytes_im = io.BytesIO(init_im.content)
-        cv_im = Image.open(bytes_im)
+        try:
+            cv_im = Image.open(bytes_im)
+        except Exception:
+            continue
         cv_im = cv_im.convert("RGBA")
+
+        names.append(name)
+        artists.append(artist)
         cv_im = cv_im.resize((300, 300), Image.Resampling.LANCZOS)
         blank[350:650, 350:650] = np.array(cv_im)
         covers.append(blank.copy())
