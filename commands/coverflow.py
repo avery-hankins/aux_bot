@@ -41,6 +41,8 @@ async def coverflow(message: discord.Message, lastfmKey: str):
     period = args[1] if len(args) > 1 else "12month"
     limit = 15
 
+    working = await message.channel.send("Working on it!")
+
     S = 500  # canvas size
     cover_size = 150
     half = cover_size // 2
@@ -153,6 +155,7 @@ async def coverflow(message: discord.Message, lastfmKey: str):
 
     imageio.mimsave('chart.gif', frames, loop=0, duration=durations)
     await message.channel.send(file=discord.File('chart.gif'))
+    await working.delete()
 
 def bezier(input):
     return input * input * (3.0 - 2.0 * input)

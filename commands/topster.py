@@ -77,12 +77,9 @@ async def topster(message, lastfmKey):
         cv_im = cv_im.resize((int(cv_im.size[0] * scale), int(cv_im.size[1] * scale)))
         album_images.append(cv_im)
 
-    await message.channel.send(f"Downloaded {len(album_images)} album covers, placing...")
-
     # create collage, retry with increasing spacing
     max_attempts = 5
     for attempt_num in range(max_attempts):
-        await message.channel.send(f"Attempt {attempt_num + 1}/{max_attempts} (offset: {vert_offset})")
         vert_offset += 3
         hor_offset += 3
 
@@ -153,6 +150,8 @@ async def orbit_topster(message, lastfmKey):
         return
 
     period = remaining[1] if len(remaining) > 1 else "12month"
+
+    working = await message.channel.send("Working on it!")
 
     ring_lengths = [0, 8, 16, 20, 27, 30]
     rings = len(ring_lengths)
@@ -293,6 +292,7 @@ async def orbit_topster(message, lastfmKey):
     # im.save("chart.png")
 
     await message.channel.send(file=discord.File('chart.gif'))
+    await working.delete()
 
 async def playster(message, spotifyKey, lastfmKey):
     args = message.content.split(" ")[1:]
