@@ -9,23 +9,38 @@ from scipy.ndimage import rotate
 import numpy as np
 import cv2
 import math
+from commands.connect import find_user
 
-from commands.topster import albums_from_playlist
+headers = {'Accept': 'application/json'}
 
 """
-Creates an animated coverflow visualization from a Spotify playlist.
+Creates an animated coverflow visualization from a user's top last.fm albums.
 
 Generates a 3D coverflow effect with album covers that transition smoothly
-using perspective transforms and bezier easing. 
+using perspective transforms and bezier easing.
 
 Args:
-    message: Discord message containing playlist ID as second word
-    spotifyKey: Spotify API authentication key
+    message: Discord message, optionally containing a last.fm username and period
+    lastfmKey: Last.fm API key
 
 Sends:
     GIF file to the Discord channel showing the animated coverflow
 """
-async def coverflow(message: discord.Message, spotifyKey: str):
+async def coverflow(message: discord.Message, lastfmKey: str):
+    args = message.content.split(" ")[1:]
+
+    user = args[0] if len(args) > 0 else None
+    if not user:
+        linked = find_user(message.author.id)
+        if linked:
+            user = linked.strip()
+        else:
+            await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+            return
+
+    period = args[1] if len(args) > 1 else "12month"
+    limit = 25
+
     red_square = np.zeros((1000, 1000, 4), dtype=np.uint8)
     red_square[350:650, 350:650, 0] = 255
     red_square[350:650, 350:650, 3] = 255
@@ -33,25 +48,29 @@ async def coverflow(message: discord.Message, spotifyKey: str):
     blue_square = np.zeros((1000, 1000, 4), dtype=np.uint8)
     blue_square[350:650, 350:650, 2] = 255
     blue_square[350:650, 350:650, 3] = 255
-    #red_square[350:650, 350:650, 3] = 255
 
     covers = []
     names = []
     artists = []
 
-    albums = albums_from_playlist(message.content.split()[1], spotifyKey)
+    r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=' + str(limit) + '&period=' + period + '&api_key=' + lastfmKey + '&format=json', headers=headers)
+    rawjson = r.json()
+    albums = rawjson['topalbums']['album']
+
     blank = np.zeros((1000, 1000, 4), dtype=np.uint8)
     for album in albums:
-        print(album['track']['album']['name'])
+        name = album['name']
+        artist = album['artist']['name']
+        print(name)
 
-        if len(album['track']['album']['images']) == 0:
-            await message.channel.send("Skipped album " + album['track']['album']['name'])
+        if len(album['image'][2]['#text']) == 0:
+            await message.channel.send("Skipped album " + name)
             continue
 
-        names.append(album['track']['album']['name'])
-        artists.append(album['track']['album']['artists'][0]['name'])
+        names.append(name)
+        artists.append(artist)
 
-        init_im = requests.get(album['track']['album']['images'][1]['url'])
+        init_im = requests.get(album['image'][2]['#text'])
         bytes_im = io.BytesIO(init_im.content)
         cv_im = Image.open(bytes_im)
         cv_im = cv_im.convert("RGBA")

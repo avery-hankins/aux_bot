@@ -12,21 +12,29 @@ import re
 from pygifsicle import optimize
 
 import urllib.parse
+from commands.connect import find_user
 
 
 headers = {'Accept': 'application/json'}
 
-async def topster(message, lastfmKey, spotifyKey):
+def resolve_lastfm_user(message, args) -> str | None:
+    if len(args) > 0:
+        return args[0]
+    user = find_user(message.author.id)
+    if user is not None:
+        return user.strip()
+    return None
+
+async def topster(message, lastfmKey):
     args = message.content.split(" ")[1:]
 
-    if args[0] == "-orbit":
-        await orbit_topster(message, lastfmKey, spotifyKey)
+    if len(args) > 0 and args[0] == "-orbit":
+        await orbit_topster(message, lastfmKey)
         return
 
-    if len(args) > 0:
-        user = args[0]
-    else:
-        await message.channel.send("Please specify a lastfm username.")
+    user = resolve_lastfm_user(message, args)
+    if not user:
+        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
         return
 
     working = await message.channel.send("Working on it!")
@@ -282,7 +290,16 @@ def rescale(img, factor):
 
     return img_io
 
-async def orbit_topster(message, lastfmKey, spotifyKey):
+async def orbit_topster(message, lastfmKey):
+    args = message.content.split(" ")[1:]  # includes "-orbit"
+    remaining = args[1:]  # after "-orbit"
+    user = resolve_lastfm_user(message, remaining)
+    if not user:
+        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+        return
+
+    period = remaining[1] if len(remaining) > 1 else "12month"
+
     ring_lengths = [0, 8, 16, 20, 27, 30]
     rings = len(ring_lengths)
     total_limit = sum(ring_lengths)
@@ -317,31 +334,24 @@ async def orbit_topster(message, lastfmKey, spotifyKey):
 
     images = [None] * total_limit
 
-    topalbums = albums_from_playlist(message.content.split()[2], spotifyKey)
+    r = requests.get('http://ws.audioscrobbler.com/2.0/?method=user.gettopalbums&user=' + user + '&limit=' + str(total_limit * 2) + '&page=1&period=' + period + '&api_key=' + lastfmKey + '&format=json', headers=headers)
+    rawjson = r.json()
+    topalbums = rawjson['topalbums']['album']
 
     albums_saved = 0
     i = 0
     albumnames = []
-    while albums_saved < total_limit:
-
+    while albums_saved < total_limit and i < len(topalbums):
         album = topalbums[i]
-        # if len(album['image'][2]['#text']) > 0:
-        #     init_im = requests.get(album['image'][2]['#text'])
-        #     bytes_im = io.BytesIO(init_im.content)
-        #     cv_im = Image.open(bytes_im)
-        #     cv_im = cv_im.resize((album_size, album_size))
-        #     cv_im = cv_im.convert("RGBA")
-        #     images[albums_saved] = cv_im
-        #     albums_saved += 1
-
-        name = album['track']['album']['name']
+        name = album['name']
         print(name)
 
-        if len(album['track']['album']['images']) == 0:
+        if len(album['image'][2]['#text']) == 0:
             await message.channel.send("Skipped album " + name)
+            i += 1
             continue
 
-        init_im = requests.get(album['track']['album']['images'][1]['url'])
+        init_im = requests.get(album['image'][2]['#text'])
         bytes_im = io.BytesIO(init_im.content)
         cv_im = Image.open(bytes_im)
         cv_im = cv_im.convert("RGBA")
@@ -349,9 +359,6 @@ async def orbit_topster(message, lastfmKey, spotifyKey):
         if name not in albumnames:
             images[albums_saved] = cv_im
             albums_saved += 1
-
-            #await message.channel.send(name)
-            #await message.channel.send(album['track']['album']['images'][1]['url'])
 
         albumnames.append(name)
         i += 1

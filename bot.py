@@ -132,7 +132,7 @@ async def on_message(message):
         return
 
     if message.content.startswith('!coverflow'):
-        await coverflow(message, get_spotify_token())
+        await coverflow(message, lastfmKey)
         return
 
     if message.content.startswith('!help'):
@@ -224,7 +224,7 @@ async def on_message(message):
         return
 
     if message.content.startswith("!topster"):
-        await topster(message, lastfmKey, get_spotify_token())
+        await topster(message, lastfmKey)
         return
 
 
