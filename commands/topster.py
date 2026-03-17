@@ -63,7 +63,6 @@ async def topster(message, lastfmKey):
         if album is None or 'image' not in album or album['image'][2]['#text'] == "":
             continue
 
-        print(f"Downloading {i+1}/{len(topalbums)}: {album['name']}")
         init_im = requests.get(album['image'][2]['#text'])
         bytes_im = io.BytesIO(init_im.content)
         try:
@@ -114,11 +113,8 @@ async def topster(message, lastfmKey):
                 break
 
             if not placed:
-                print(f"  Could not place album {album_images.index(cv_im)}")
                 skipped_albums += 1
                 break
-            else:
-                print(f"  Placed album {album_images.index(cv_im)} in {attempt+1} attempts")
 
         if skipped_albums == 0:
             break
@@ -197,7 +193,6 @@ async def orbit_topster(message, lastfmKey):
     while albums_saved < total_limit and i < len(topalbums):
         album = topalbums[i]
         name = album['name']
-        print(name)
 
         if len(album['image'][2]['#text']) == 0:
             await message.channel.send("Skipped album " + name)
@@ -227,11 +222,9 @@ async def orbit_topster(message, lastfmKey):
     duration = 5
 
     for frame in range(framerate * duration):
-        print(frame)
         f_canvas = canvas.copy()
         positions = []
         for ring in range(rings):
-            print(ring)
             radius_mult_offset = abs(math.sin(frame * 1 / (framerate * duration) * 2 * math.pi))
             #radius = (ring * canvas_size/rings) / 2
             radius = ring * album_size + 40
@@ -332,8 +325,6 @@ async def playster(message, spotifyKey, lastfmKey):
             await message.channel.send("Skipped album " + name)
             continue
 
-        print(name)
-
         # r = requests.get('http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=' + lastfmKey + '&artist='
         #                  + urllib.parse.quote(artist) + '&album=' + urllib.parse.quote(name) +
         #                  '&user=' + user + '&format=json', headers=headers)
@@ -426,7 +417,6 @@ async def playster(message, spotifyKey, lastfmKey):
     # find best chart size
     size = math.ceil(math.sqrt(len(albumcovers)))
     # size = 9
-    print(len(albumcovers), size)
     blank_albums = size*size - len(albumcovers)
 
     image = []
@@ -439,7 +429,6 @@ async def playster(message, spotifyKey, lastfmKey):
         album_pad[10:310, 10:310] = np.array(album)
         album = Image.fromarray(album_pad)
 
-        print(album.size)
         rows.append(album)
 
         if len(rows) % size == 0:
@@ -458,7 +447,6 @@ async def playster(message, spotifyKey, lastfmKey):
     elif len(rows) != 0:
         image.append(np.hstack(rows))
 
-    print([print(x.shape) for x in image])
     image = np.vstack(image)
     Image.fromarray(image).save("chart.png")
 
@@ -491,10 +479,7 @@ def albums_from_playlist(playlist: str, spotifyKey: str) -> list:
     fields = "total"
     #fields = "items.track.album(name, images, artists, preview_url)"
     r = requests.get('https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks?limit=100&fields=' + fields, headers=headers)
-    print(r.content)
-    print(r.text)
     rawjson = r.json()
-    print(rawjson)
 
     total = rawjson['total']
     iterations = math.ceil(total / 100)  # for max_limit of 100
@@ -505,7 +490,6 @@ def albums_from_playlist(playlist: str, spotifyKey: str) -> list:
     for i in range(iterations):
         r = requests.get('https://api.spotify.com/v1/playlists/' + playlist_id + '/tracks?limit=100&offset=' + str(i*100) + '&fields=' + fields, headers=headers)
         rawjson = r.json()
-        print(rawjson)
         topalbums.extend(rawjson['items'])
 
     return topalbums
@@ -515,18 +499,14 @@ def albums_from_user(message, spotifyKey: str) -> list:
 
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + spotifyKey}
     r = requests.get('https://api.spotify.com/v1/me/albums', headers=headers)
-    print(r.text)
     rawjson = r.json()
-    print(rawjson)
 
     total = rawjson['total']
     iterations = math.ceil(total / 50)  # for max_limit of 100
 
     for i in range(iterations):
         r = requests.get('https://api.spotify.com/v1/me/albums?limit=50&offset=' + str(i*50), headers=headers)
-        print(r)
         rawjson = r.json()
-        print(rawjson)
         topalbums.extend(rawjson['items'])
     #
     # for album in topalbums:

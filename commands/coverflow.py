@@ -60,7 +60,6 @@ async def coverflow(message: discord.Message, lastfmKey: str):
     for album in albums:
         name = album['name']
         artist = album['artist']['name']
-        print(name)
 
         if len(album['image'][2]['#text']) == 0:
             continue
