@@ -28,8 +28,8 @@ def resolve_lastfm_user(message, args) -> str | None:
 async def topster(message, lastfmKey):
     args = message.content.split(" ")[1:]
 
-    if len(args) > 0 and args[0] == "-orbit":
-        await orbit_topster(message, lastfmKey)
+    if len(args) > 0 and args[0] in ("-orbit", "-pvc"):
+        await orbit_topster(message, lastfmKey, pvc=(args[0] == "-pvc"))
         return
 
     user = resolve_lastfm_user(message, args)
@@ -137,9 +137,9 @@ async def topster(message, lastfmKey):
     await message.channel.send(f"Skipped {skipped_albums}/{total_limit} albums")
     await working.delete()
 
-async def orbit_topster(message, lastfmKey):
-    args = message.content.split(" ")[1:]  # includes "-orbit"
-    remaining = args[1:]  # after "-orbit"
+async def orbit_topster(message, lastfmKey, pvc=False):
+    args = message.content.split(" ")[1:]  # includes "-orbit"/"-pvc"
+    remaining = args[1:]  # after the flag
     user = resolve_lastfm_user(message, remaining)
     if not user:
         await message.channel.send("Please specify a lastfm username or link your account with !connect.")
@@ -172,14 +172,17 @@ async def orbit_topster(message, lastfmKey):
     w = int((ring_lengths[-1] * album_size) / 2)
     canvas_size = h
 
-    back_small = Image.open(f"assets/pvc_bg.png")
+    bg_path = "assets/pvc_bg.png" if pvc else "assets/topster_bg.jpeg"
+    back_small = Image.open(bg_path)
     back_small = back_small.convert("RGBA")
     back_small = back_small.resize((h, w), Image.Resampling.LANCZOS)
     canvas = np.array(back_small)
-    #canvas = np.ones((h, w, 4), dtype=np.uint8) * 255
 
-    top_text = Image.open(f"assets/pvc_text_20fps.gif")
-    top_text_frames = top_text.n_frames
+    top_text = None
+    top_text_frames = 0
+    if pvc:
+        top_text = Image.open(f"assets/pvc_text_20fps.gif")
+        top_text_frames = top_text.n_frames
 
     images = [None] * total_limit
 
@@ -252,25 +255,13 @@ async def orbit_topster(message, lastfmKey):
 
         theta_offset = (frame / (framerate * duration)) * 2 * math.pi
 
-        # load pvc text on top with alpha mask
-        # pvc_text = Image.open(f"assets/pvc_logo_text.png")
-        # pvc_text = pvc_text.convert("RGBA")
-        # pvc_text = pvc_text.resize((canvas_size, canvas_size), Image.Resampling.LANCZOS)
-        # pvc_text_mask = np.array(pvc_text)[:, :, 3] != 0
-        #
-        # f_canvas[0:canvas_size, 0:canvas_size][pvc_text_mask] = np.array(pvc_text)[pvc_text_mask]
-
-        # crop frames
-        #f_canvas = f_canvas[int(canvas_size/2) - 500:int(canvas_size/2) + 500, int(canvas_size/2) - 500:int(canvas_size/2) + 500]
-
-        # load given frame of animated pvc text
-        closest_index = int((frame / (framerate * duration)) * top_text_frames)
-        top_text.seek(closest_index)
-        top_text_frame = top_text.convert("RGBA")
-        top_text_frame = top_text_frame.resize((canvas_size, canvas_size), Image.Resampling.LANCZOS)
-        top_text_frame_mask = np.array(top_text_frame)[:, :, 3] != 0
-
-        f_canvas[0:canvas_size, 0:canvas_size][top_text_frame_mask] = np.array(top_text_frame)[top_text_frame_mask]
+        if pvc and top_text is not None:
+            closest_index = int((frame / (framerate * duration)) * top_text_frames)
+            top_text.seek(closest_index)
+            top_text_frame = top_text.convert("RGBA")
+            top_text_frame = top_text_frame.resize((canvas_size, canvas_size), Image.Resampling.LANCZOS)
+            top_text_frame_mask = np.array(top_text_frame)[:, :, 3] != 0
+            f_canvas[0:canvas_size, 0:canvas_size][top_text_frame_mask] = np.array(top_text_frame)[top_text_frame_mask]
 
         # resize to 512x512
         f_canvas = Image.fromarray(f_canvas)
