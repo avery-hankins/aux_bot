@@ -19,7 +19,8 @@ starboard_bot = os.getenv('STARBOARD_BOT')
 #server = os.getenv('SERVER')
 threshold = os.getenv('STAR_THRESHOLD')
 
-year = "2024" #assume year is 2024
+# year = "2026" #assume year is 2026
+# only used for RYM commands
 
 from games import *
 from commands.albumguess import *
