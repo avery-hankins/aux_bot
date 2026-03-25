@@ -152,6 +152,7 @@ async def on_message(message):
         # embedVar.add_field(name="!rymchart", value="Show the top albums from a given year, according to RYM", inline = False)
         embedVar.add_field(name="!sblb", value="Shows the users with the most Starboard stars (or number of messages pinned with \"!sblb messages)\"", inline=False)
         embedVar.add_field(name="!sbrefresh", value="Refreshes the starboard database, and recalculates the leaderboard.", inline=False)
+        embedVar.add_field(name="!topster", value="[PLAYGROUND] Generates topster using last.fm data, use -pvc and -orbit flags for topster variations.")
         await message.channel.send(embed=embedVar)
         return
 
