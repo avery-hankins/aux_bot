@@ -479,8 +479,23 @@ async def playster(message, spotifyKey, lastfmKey):
     text_img.save("text.png")
 
 
-    await message.channel.send(file=discord.File('chart.png'))
-    await message.channel.send(file=discord.File('text.png'))
+    try:
+        await message.channel.send(file=discord.File('chart.png'))
+    except discord.HTTPException as e:
+        if e.status == 413:
+            await message.channel.send("Playlist is too big to send as a chart! Trying jpeg. (pinging <@!404832801742127122>)")
+            Image.fromarray(image).convert("RGB").save("chart.jpg", quality=85)
+            await message.channel.send(file=discord.File('chart.jpg'))
+        else:
+            raise
+    try:
+        await message.channel.send(file=discord.File('text.png'))
+    except discord.HTTPException as e:
+        if e.status == 413:
+            text_img.convert("RGB").save("text.jpg", quality=85)
+            await message.channel.send(file=discord.File('text.jpg'))
+        else:
+            raise
 
 def albums_from_playlist(playlist: str, spotifyKey: str) -> list:
     topalbums = []
