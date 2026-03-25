@@ -9,7 +9,6 @@ import imageio
 import io
 import numpy as np
 import re
-from pygifsicle import optimize
 
 import urllib.parse
 from commands.connect import find_user
@@ -292,7 +291,6 @@ async def orbit_topster(message, lastfmKey, pvc=False):
                 # compress and retry with smaller resolution
                 smaller_frames = [np.array(Image.fromarray(f).resize((384, 384), Image.Resampling.LANCZOS)) for f in frames]
                 imageio.mimsave('chart.gif', smaller_frames, loop=0, duration=0.5, fps=framerate)
-                optimize('chart.gif')
                 await message.channel.send(file=discord.File('chart.gif'))
             else:
                 raise
