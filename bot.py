@@ -1,7 +1,6 @@
 import discord
 import os
 from dotenv import load_dotenv
-import user_functions
 import asyncio
 import sqlite3
 from spotify_auth import get_spotify_token
