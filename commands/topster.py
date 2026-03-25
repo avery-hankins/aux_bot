@@ -285,7 +285,17 @@ async def orbit_topster(message, lastfmKey, pvc=False):
             frames.append(f_canvas)
 
         imageio.mimsave('chart.gif', frames, loop=0, duration=0.5, fps=framerate)
-        await message.channel.send(file=discord.File('chart.gif'))
+        try:
+            await message.channel.send(file=discord.File('chart.gif'))
+        except discord.HTTPException as e:
+            if e.status == 413:
+                # compress and retry with smaller resolution
+                smaller_frames = [np.array(Image.fromarray(f).resize((384, 384), Image.Resampling.LANCZOS)) for f in frames]
+                imageio.mimsave('chart.gif', smaller_frames, loop=0, duration=0.5, fps=framerate)
+                optimize('chart.gif')
+                await message.channel.send(file=discord.File('chart.gif'))
+            else:
+                raise
     except Exception as e:
         await message.channel.send(f"Error generating orbit topster: {e}")
     finally:
