@@ -78,7 +78,7 @@ async def on_ready():
     cursor.close()
 
     print(f'We have logged in as {client.user}')
-    await client.change_presence(activity=discord.Game(name="!help for help"))
+    await client.change_presence(activity=discord.Game(name="!auxhelp for help"))
 
 @client.event
 async def on_message(message):
@@ -135,7 +135,7 @@ async def on_message(message):
         await coverflow(message, lastfmKey)
         return
 
-    if message.content.startswith('!help'):
+    if message.content.startswith('!auxhelp'):
         embedVar = discord.Embed(title="Help", description="Commands and description.", color=0x000000)
         embedVar.add_field(name="!ag", value="Album Guess. You'll be given a random blurred album cover, and you have to guess what it is.", inline=False)
         embedVar.add_field(name="!battle", value="Aux battle. Input the timeframe (7day, 1month, 3month, 6month, 12month, overall) and then a list of last.fm usernames. Example: !battle 7day mostlikelyhuman fm-bot", inline=False)
@@ -144,7 +144,7 @@ async def on_message(message):
         embedVar.add_field(name="!coverflow", value="[PLAYGROUND] Display your recent albums in a coverflow-style view.", inline=False)
         embedVar.add_field(name="!donate", value="Donate to support the bot.", inline=False)
         embedVar.add_field(name="!jamble", value="You'll be given a scrambled artist name from your recent listening history, guess who it is!", inline=False)
-        embedVar.add_field(name="!help", value="This command.", inline=False)
+        embedVar.add_field(name="!auxhelp", value="This command.", inline=False)
         embedVar.add_field(name="!meeting", value="View previous PVC meetings, or get chart information about a specific one.", inline=False)
         embedVar.add_field(name="!moneyspread", value="DRANKDRANKDRANKDRANK", inline=False)
         embedVar.add_field(name="!playlist", value="[PLAYGROUND] Generate a playlist-style chart from your listening history.", inline=False)
