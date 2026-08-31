@@ -140,7 +140,7 @@ async def on_message(message):
         embedVar.add_field(name="!ag", value="Album Guess. You'll be given a random blurred album cover, and you have to guess what it is.", inline=False)
         embedVar.add_field(name="!battle", value="Aux battle. Input the timeframe (7day, 1month, 3month, 6month, 12month, overall) and then a list of last.fm usernames. Example: !battle 7day mostlikelyhuman fm-bot", inline=False)
         embedVar.add_field(name="!brat", value="Input text to bratify, or add -chart to get a chart of your recent listening history (but if all the albums were brat).", inline=False)
-        embedVar.add_field(name="!connect", value="Connect your last.fm account to your discord account, to use commands that require it.", inline=False)
+        embedVar.add_field(name="!auxconnect", value="Connect your last.fm account to your discord account, to use commands that require it.", inline=False)
         embedVar.add_field(name="!coverflow", value="[PLAYGROUND] Display your recent albums in a coverflow-style view.", inline=False)
         embedVar.add_field(name="!donate", value="Donate to support the bot.", inline=False)
         embedVar.add_field(name="!jamble", value="You'll be given a scrambled artist name from your recent listening history, guess who it is!", inline=False)
@@ -186,7 +186,7 @@ async def on_message(message):
     #     await albums_from_user(message, get_spotify_token())
     #     return
 
-    if message.content.startswith('!connect'):
+    if message.content.startswith('!auxconnect'):
         await connect(message)
         return
 

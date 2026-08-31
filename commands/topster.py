@@ -41,7 +41,7 @@ async def topster(message, lastfmKey):
 
     user = resolve_lastfm_user(message, args)
     if not user:
-        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+        await message.channel.send("Please specify a lastfm username or link your account with !auxconnect.")
         return
 
     period = resolve_period(args)
@@ -160,7 +160,7 @@ async def orbit_topster(message, lastfmKey, pvc=False):
     remaining = args[1:]  # after the flag
     user = resolve_lastfm_user(message, remaining)
     if not user:
-        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+        await message.channel.send("Please specify a lastfm username or link your account with !auxconnect.")
         return
 
     period = resolve_period(remaining)

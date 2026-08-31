@@ -32,7 +32,7 @@ async def coverflow(message: discord.Message, lastfmKey: str):
 
     user = resolve_lastfm_user(message, args)
     if not user:
-        await message.channel.send("Please specify a lastfm username or link your account with !connect.")
+        await message.channel.send("Please specify a lastfm username or link your account with !auxconnect.")
         return
 
     period = resolve_period(args)

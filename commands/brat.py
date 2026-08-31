@@ -28,7 +28,7 @@ async def brat(message, lastfmKey):
         user = find_user(message.author.id)
 
         if user is None:
-            await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect USERNAME.")
+            await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !auxconnect USERNAME.")
             return
 
         if len(args) > 1:

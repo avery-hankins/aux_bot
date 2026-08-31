@@ -20,7 +20,7 @@ async def albumguess(message: discord.Message, lastfmKey: str, client: discord.C
     user = find_user(message.author.id)
 
     if user is None:
-        await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !connect [username].")
+        await message.channel.send("You must link your last.fm account to your discord account to view recent charts, run !auxconnect [username].")
         return [None, None, None, None, None, None]
 
     num = random.randint(1, 500)
